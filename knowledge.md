@@ -20,6 +20,11 @@ dataset only. No real-data statistics exist yet; none are claimed.
    and non-regular sessions, holidays.
 4. Phase 3 security master + corporate-action audit, then Phase 4/5 on real data, Phase 6 gate.
 
+(2026-10-16 16:45Z: huggingface.co API now reachable, but file downloads still fail: the xet path needs
+cas-server.xethub.hf.co and the plain-HTTP fallback redirects to us.aws.cdn.hf.co; both get proxy 403.
+Need those hosts (or *.hf.co, or Full network access) allowed. Dataset is 10.5 GB: 8 minute parquet
+files + 1 daily parquet.)
+
 ## Environment
 4 CPU, ~15 GB RAM, ~30 GB free disk, no GPU (cloud container). Python 3.13, Node 22.
 Canonical remote: https://github.com/Soham-Paranjpe27/pulsetrader (added 2026-10-16; was empty).
