@@ -81,7 +81,7 @@ def _write_shards(raw):
     (raw / "minute").mkdir(parents=True)
     (raw / "day").mkdir(parents=True)
     start = datetime(2024, 1, 1, 3, 45, tzinfo=UTC)  # 09:15 IST
-    for shard, syms in enumerate((["AAA", "BBB", "CCC"], ["DDD", "NIFTY_50"])):
+    for shard, syms in enumerate((["AAA", "BBB", "CCC"], ["CCC", "DDD", "NIFTY_50"])):
         rows = [
             {
                 "symbol": s,
@@ -95,6 +95,7 @@ def _write_shards(raw):
             }
             for s in syms
             for k in range(375)
+            if not (s == "CCC" and (k < 200) == bool(shard))  # CCC split across the two shards
         ]
         rows.append({**rows[0], "timestamp": start + timedelta(hours=9)})  # 18:15 IST: post-market
         pl.DataFrame(rows).write_parquet(raw / "minute" / f"train-{shard:05d}.parquet")
@@ -123,6 +124,9 @@ def test_sharded_utc_parquet(tmp_path):
     a = pl.read_parquet(tmp_path / "canonical" / "AAA.parquet")
     assert a.schema["ts"] == pl.Datetime("us", "Asia/Kolkata")
     assert str(a["ts"][0].time()) == "09:15:00" and str(a["ts"][-1].time()) == "15:29:00"
+    c = pl.read_parquet(tmp_path / "canonical" / "CCC.parquet")
+    assert c.height == 375 and c["ts"].is_sorted()
+    assert "CCC" in next(f for f in m["files"] if f["source_id"] == "minute_train-00001")["symbol_collisions"]
     assert m["daily"]["rows"] == 20 and m["daily"]["symbols"] == 2
     d = pl.read_parquet(tmp_path / "canonical_daily" / "*.parquet")
     assert str(d["trade_date"].min()) == "2024-01-02" and set(d["session"]) == {"DAY"}
@@ -142,6 +146,6 @@ def test_discovery_shards(tmp_path):
     _write_shards(raw)
     m = discovery.discover(raw, tmp_path / "reports", hash_files=False)
     mb = m["by_frequency"]["minute"]
-    assert mb["symbol_count"] == 5 and mb["symbols_in_several_files"] == []
+    assert mb["symbol_count"] == 5 and mb["symbols_in_several_files"] == ["CCC"]
     assert mb["session_counts"]["POST_MARKET"] == 2
     assert m["by_frequency"]["day"]["row_count"] == 20

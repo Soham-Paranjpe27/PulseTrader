@@ -8,6 +8,8 @@ Decisions (see docs/data-pipeline.md):
   raw/ stays the full, immutable source; this avoids a second full copy of a ~10 GB dataset.
 * canonical/ holds one parquet file per symbol of minute bars: rows with is_valid, exact
   (symbol, ts) duplicates removed keeping the first, REGULAR session only by default.
+* A symbol split across two shards (seen at shard boundaries) is merged into its one canonical
+  file and listed under symbol_collisions.
 * Daily bars (detected from the bar spacing) go to canonical_daily/ instead, with session "DAY".
 """
 
@@ -118,11 +120,16 @@ def process_file(
             continue
         for (sym,), g in canon.partition_by("symbol", as_dict=True, maintain_order=True).items():
             name = safe_name(str(sym))
-            if name in written:  # the same symbol in two source files: keep both, report it
+            out = canonical_dir / f"{name}.parquet"
+            if name in written:  # a symbol split across two source shards: merge into one file
                 collisions.append(str(sym))
-                name = f"{name}__{sid}"
+                g = (
+                    pl.concat([pl.read_parquet(out), g])
+                    .unique(subset=["symbol", "ts"], keep="first", maintain_order=True)
+                    .sort("ts")
+                )
             written.add(name)
-            g.write_parquet(canonical_dir / f"{name}.parquet")
+            g.write_parquet(out)
     return {
         "source": str(path),
         "source_id": sid,
