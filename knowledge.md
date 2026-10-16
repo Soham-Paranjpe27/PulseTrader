@@ -10,6 +10,7 @@ dataset only. No real-data statistics exist yet; none are claimed.
 
 ## Next exact action
 (2026-10-16 16:15Z: user created a new cloud environment that should allow huggingface.co; it applies only to new sessions. The old session re-tested and was still blocked.)
+(2026-10-16 16:16Z: new session on env "SohamParanjpe" (env_01Ak5etx...) re-tested: huggingface.co, cdn-lfs.huggingface.co, cas-bridge.xethub.hf.co still get proxy 403. That environment's network access does not yet allow them. PyPI still works.)
 
 1. Once huggingface.co is reachable: `cd ml && PULSETRADER_DATA_DIR=../data .venv/bin/pulsetrader fetch`
    (check `df -h` first; ~30 GB free disk, 15 GB RAM in the cloud container).
@@ -21,8 +22,9 @@ dataset only. No real-data statistics exist yet; none are claimed.
 
 ## Environment
 4 CPU, ~15 GB RAM, ~30 GB free disk, no GPU (cloud container). Python 3.13, Node 22.
-Repo is developed in a local clone and mirrored to /mnt/project-files/pulsetrader (network mount).
-No GitHub remote yet.
+Canonical remote: https://github.com/Soham-Paranjpe27/pulsetrader (added 2026-10-16; was empty).
+Work goes on claude/ branches with PRs into main. /mnt/project-files/pulsetrader is a mirror of
+the working branch for other project threads.
 
 ## Architecture (so far)
 - `ml/src/pulsetrader/`: config, data/{schema,validate,io,discovery,pipeline}, features/{engine,preprocess},
