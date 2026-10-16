@@ -13,7 +13,7 @@ SESSION_CLOSE = time(15, 30)  # last regular 1-minute bar starts at 15:29
 BAR_MINUTES = 1
 
 SCHEMA_VERSION = "canonical-v1"
-PROCESSING_VERSION = "pipeline-v1"
+PROCESSING_VERSION = "pipeline-v2"
 FEATURE_VERSION = "features-v1"
 LABEL_VERSION = "labels-v1"
 

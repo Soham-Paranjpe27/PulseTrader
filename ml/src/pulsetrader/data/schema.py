@@ -75,7 +75,7 @@ def normalise(lf: pl.LazyFrame, raw_columns: list[str], symbol: str | None) -> p
     else:
         raise SchemaError("no symbol column and no symbol supplied")
 
-    ts_raw = pl.col(m["ts"])
+    ts_raw = _to_ist(pl.col(m["ts"]), lf.collect_schema()[m["ts"]])
     out = lf.select(
         sym.alias("symbol"),
         ts_raw.alias("_ts_raw"),
@@ -84,11 +84,20 @@ def normalise(lf: pl.LazyFrame, raw_columns: list[str], symbol: str | None) -> p
             for c in ("open", "high", "low", "close", "volume")
         ],
     )
-    return out.with_columns(_to_ist(pl.col("_ts_raw")).alias("ts")).drop("_ts_raw").select(CANONICAL_COLUMNS)
+    return out.rename({"_ts_raw": "ts"}).select(CANONICAL_COLUMNS)
 
 
-def _to_ist(e: pl.Expr) -> pl.Expr:
-    # Strings are parsed; the resulting naive datetime is treated as IST. tz-aware input is converted.
+def _to_ist(e: pl.Expr, dtype: pl.DataType) -> pl.Expr:
+    """Convert a raw timestamp column to Datetime(us, IST).
+
+    tz-aware datetimes (e.g. the Hugging Face dataset's UTC column) are converted to IST.
+    Naive datetimes and strings are treated as IST wall-clock (NSE convention).
+    """
+    if isinstance(dtype, pl.Datetime):
+        e = e.dt.cast_time_unit("us")
+        if dtype.time_zone is not None:
+            return e.dt.convert_time_zone(IST)
+        return e.dt.replace_time_zone(IST, ambiguous="earliest", non_existent="null")
     return (
         e.cast(pl.Utf8)
         .str.replace(r"\+05:30$", "")

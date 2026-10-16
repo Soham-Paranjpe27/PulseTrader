@@ -16,6 +16,7 @@ SESSION_REGULAR = "REGULAR"
 SESSION_PRE = "PRE_MARKET"
 SESSION_POST = "POST_MARKET"
 SESSION_WEEKEND = "WEEKEND"
+SESSION_DAY = "DAY"  # daily bars: no intraday session
 
 
 def session_expr() -> pl.Expr:
@@ -91,6 +92,24 @@ class QualitySummary:
     def as_dict(self) -> dict[str, Any]:
         return self.__dict__.copy()
 
+    def merge(self, other: QualitySummary) -> QualitySummary:
+        """Combine summaries of disjoint symbol batches of the same file."""
+
+        def add(a: dict[str, int], b: dict[str, int]) -> dict[str, int]:
+            return {k: a.get(k, 0) + b.get(k, 0) for k in sorted(set(a) | set(b))}
+
+        mins = [t for t in (self.min_ts, other.min_ts) if t is not None]
+        maxs = [t for t in (self.max_ts, other.max_ts) if t is not None]
+        return QualitySummary(
+            rows=self.rows + other.rows,
+            symbols=self.symbols + other.symbols,
+            min_ts=min(mins) if mins else None,
+            max_ts=max(maxs) if maxs else None,
+            flag_counts=add(self.flag_counts, other.flag_counts),
+            session_counts=add(self.session_counts, other.session_counts),
+            valid_rows=self.valid_rows + other.valid_rows,
+        )
+
 
 def summarise(flagged: pl.LazyFrame) -> QualitySummary:
     agg = flagged.select(
@@ -112,6 +131,26 @@ def summarise(flagged: pl.LazyFrame) -> QualitySummary:
         session_counts={s: int(n) for s, n in sess.iter_rows()},
         valid_rows=int(r["valid_rows"]),
     )
+
+
+FREQ_MINUTE = "minute"
+FREQ_DAY = "day"
+
+
+def detect_frequency(lf: pl.LazyFrame) -> str:
+    """Infer bar frequency from the median gap between consecutive bars of the same symbol."""
+    gaps = (
+        lf.select("symbol", "ts")
+        .head(200_000)
+        .sort("symbol", "ts")
+        .select((pl.col("ts").diff().over("symbol").dt.total_minutes()).alias("gap"))
+        .drop_nulls()
+        .collect()["gap"]
+    )
+    if gaps.len() == 0:
+        return FREQ_MINUTE
+    med = gaps.median()
+    return FREQ_DAY if med is not None and float(med) >= 60 * 20 else FREQ_MINUTE  # type: ignore[arg-type]
 
 
 def missing_candles(canonical: pl.LazyFrame, expected_per_day: int = 375) -> pl.LazyFrame:
