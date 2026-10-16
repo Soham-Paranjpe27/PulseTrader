@@ -9,6 +9,8 @@ Code for Phases 1, 2, 4, 5 and the Phase 6 leakage tests exists and passes on th
 dataset only. No real-data statistics exist yet; none are claimed.
 
 ## Next exact action
+(2026-10-16 16:15Z: user created a new cloud environment that should allow huggingface.co; it applies only to new sessions. The old session re-tested and was still blocked.)
+
 1. Once huggingface.co is reachable: `cd ml && PULSETRADER_DATA_DIR=../data .venv/bin/pulsetrader fetch`
    (check `df -h` first; ~30 GB free disk, 15 GB RAM in the cloud container).
 2. `pulsetrader discover` -> reports/dataset_manifest.json, reports/data_inventory.md. Adapt
