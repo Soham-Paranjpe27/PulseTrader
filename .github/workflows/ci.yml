@@ -1,0 +1,21 @@
+name: ci
+on: [push, pull_request]
+jobs:
+  ml:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: ml } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -e ".[dev,serve]"
+      - run: ruff format --check src tests
+      - run: ruff check src tests
+      - run: mypy src
+      - run: pytest
+      - run: pip install pip-audit && pip-audit
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build ml

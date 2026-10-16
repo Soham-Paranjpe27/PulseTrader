@@ -1,0 +1,26 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: pulsetrader
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: pulsetrader
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pulsetrader"]
+      interval: 10s
+      retries: 5
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      retries: 5
+  ml-service:
+    build: ./ml
+    environment:
+      PULSETRADER_MODEL_DIR: /models
+    volumes: [./models:/models:ro]
+    ports: ["8000:8000"]
+volumes:
+  pgdata:
