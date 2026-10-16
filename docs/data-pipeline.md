@@ -26,10 +26,16 @@ ones are treated as IST wall-clock.
   under `symbol_collisions` in the manifest.
 
 ## Decisions
-- Non-regular bars (pre/post-market, weekends) are excluded from canonical but counted and reported.
-  Weekend bars in NSE data are usually special sessions (e.g. Muhurat, budget-day trading) or errors;
-  they will be inspected individually once the real data is available, and the decision recorded here.
-- Exchange holidays: no offline NSE holiday calendar is bundled. Holidays are to be detected from the
-  data (days with near-zero market-wide bars) in Phase 2 on real data.
+- Non-regular bars are excluded from canonical but counted, kept in validated/, and reported.
+  Investigated on the real data (reports/data_inventory.md, 2026-10-16):
+  - Weekend bars are NSE special sessions, not errors: Muhurat 2023-11-12; full Saturday sessions
+    2024-01-20 and 2025-02-01 (Union Budget); DR-site drill sessions 2024-03-02 and 2024-05-18; plus
+    57 stray bars on 2025-04-26. Weekday Muhurat sessions (2022-10-24, 2024-11-01) appear as
+    POST_MARKET. Excluded by default because their liquidity and timing are atypical and labels never
+    cross sessions. The two full Saturday sessions could be added later as regular days if needed.
+  - Pre/post-market bars on ~65 symbols per day in Mar-Apr 2022 (small counts per symbol) look like
+    vendor artefacts; excluded.
+- Exchange holidays are detected from the data: weekdays with no bars at all (59 in the minute data,
+  e.g. 2024-01-22, 2024-05-20, 2025-02-26) match published NSE holidays; listed in the inventory.
 - Missing candles are not forward-filled. `validate.missing_candles` reports per symbol-day gaps
   against the 375 expected regular bars; labels requiring a missing bar are null.
