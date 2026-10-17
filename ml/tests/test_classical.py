@@ -90,3 +90,27 @@ def test_sequences_are_causal_and_within_symbol(golden_dataset):
     ts = sd.meta["ts"].to_numpy()
     assert (ts[idx - 3] < ts[idx]).all()  # history strictly earlier
     assert sd.preprocessor.fit_rows == len(sd.fit_idx)
+
+
+def test_deep_models_train_on_golden(golden_dataset, tmp_path):
+    import pytest
+
+    pytest.importorskip("torch")
+    from pulsetrader.datasets.sequences import build
+    from pulsetrader.experiments.deep import DeepConfig, train_eval
+    from pulsetrader.models.deep import ARCHITECTURES
+
+    sd = build(
+        golden_dataset / "datasets" / "ds", 5, (0.001,), train_every=5, es_frac=0.34, embargo_minutes=15
+    )
+    for arch in ARCHITECTURES:
+        cfg = DeepConfig(arch=arch, length=8, samples_per_epoch=64, batch=32, max_epochs=2, hidden=8,
+                         attn=4, d_model=8, heads=2, threads=1)  # fmt: skip
+        r = train_eval(sd, cfg, tmp_path / "exp", {"dataset_id": "golden"})
+        m = r["metrics"][arch]
+        assert 0 <= m["accuracy"] <= 1 and m["coverage"] == 1.0
+        d = tmp_path / "exp" / r["experiment"]["experiment_id"]
+        assert (d / "model.pt").exists() and (d / "predictions.parquet").exists()
+        p = pl.read_parquet(d / "predictions.parquet")
+        assert np.allclose(p.select("p_down", "p_neutral", "p_up").to_numpy().sum(axis=1), 1, atol=1e-5)
+        assert set(p["split"].unique()) == {"validation"}

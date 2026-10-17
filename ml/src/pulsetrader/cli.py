@@ -1,4 +1,4 @@
-"""Command-line entry points: `pulsetrader fetch|discover|pipeline|security|dataset|audit|classical`."""
+"""Command-line entry points: `pulsetrader fetch|discover|pipeline|security|dataset|audit|classical|deep`."""
 
 from __future__ import annotations
 
@@ -114,6 +114,21 @@ def cmd_classical(args: argparse.Namespace) -> None:
     print(f"{len(summary)} experiments written to {out}")
 
 
+def cmd_deep(args: argparse.Namespace) -> None:
+    from datetime import UTC, datetime
+
+    from pulsetrader.experiments.deep import run_plan
+
+    p = data_paths()
+    log.info("resources: %s", resources())
+    out = p.root / "experiments"
+    out.mkdir(parents=True, exist_ok=True)
+    results = run_plan(p.root, out, args.name, args.stages)
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S")
+    (out / f"phase8_summary-{stamp}.json").write_text(json.dumps(results, indent=1, default=str))
+    print(f"{len(results)} experiments written to {out}")
+
+
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     ap = argparse.ArgumentParser(prog="pulsetrader")
@@ -142,6 +157,10 @@ def main() -> None:
     cl.add_argument("--horizons", default="", help="comma list, e.g. 5,15 (default: all)")
     cl.add_argument("--thresholds", default="", help="comma list, e.g. 0.001,0.002 (default: all)")
     cl.set_defaults(func=cmd_classical)
+    dp = sub.add_parser("deep", help="Phase 8: LSTM/GRU/attention/transformer, train -> validation")
+    dp.add_argument("--name", default="core100_s5")
+    dp.add_argument("--stages", default="ABC", help="A: architectures, B: lengths, C: other horizons")
+    dp.set_defaults(func=cmd_deep)
     au = sub.add_parser("audit", help="Phase 6: leakage gate on real data for a built dataset")
     au.add_argument("--name", default="core100_s5")
     au.add_argument("--reports", default="../reports")
