@@ -229,11 +229,21 @@ STAGE_C_LABELS = ((1, 0.0005), (15, 0.0020), (30, 0.0020), (60, 0.0030))
 
 
 def run_plan(
-    data_root: Path, out_root: Path, dataset: str = "core100_s5", stages: str = "ABC", **overrides: Any
+    data_root: Path,
+    out_root: Path,
+    dataset: str = "core100_s5",
+    stages: str = "ABC",
+    arch: str | None = None,
+    length: int | None = None,
+    lengths: tuple[int, ...] = (30, 120, 252),
+    **overrides: Any,
 ) -> list[dict[str, Any]]:
     """A: every architecture, length 60, on y_5m_10bp. B: the best of A at lengths 30/120/252.
     C: the best (architecture, length) on the best Phase 7 threshold of the other horizons.
-    "Best" = highest validation MCC (validation is the model-selection set; test stays unused)."""
+    "Best" = highest validation MCC (validation is the model-selection set; test stays unused).
+    `arch` / `length` fix the choice when earlier stages ran in a previous invocation. Longer
+    windows cost more per sample, so stage B scales samples per epoch by 60/length (equal compute)
+    and caps epochs at 4."""
     from pulsetrader.config import THRESHOLDS
     from pulsetrader.datasets.sequences import build
     from pulsetrader.models.deep import ARCHITECTURES
@@ -253,7 +263,7 @@ def run_plan(
     def mcc(r: dict[str, Any]) -> float:
         return float(next(iter(r["metrics"].values()))["mcc"])
 
-    best_arch, best_len = "gru", 60
+    best_arch, best_len = arch or "gru", length or 60
     sd = build(ds_dir, 5, THRESHOLDS) if ("A" in stages or "B" in stages) else None
     if "A" in stages and sd is not None:
         stage = [
@@ -263,8 +273,19 @@ def run_plan(
         best_arch = max(stage, key=mcc)["experiment"]["model"]
     if "B" in stages and sd is not None:
         stage = [
-            train_eval(sd, DeepConfig(arch=best_arch, length=n, **overrides), out_root, info)
-            for n in (30, 120, 252)
+            train_eval(
+                sd,
+                DeepConfig(
+                    arch=best_arch,
+                    length=n,
+                    samples_per_epoch=min(400_000, 400_000 * 60 // n),
+                    max_epochs=6 if n <= 60 else 4,
+                    **overrides,
+                ),
+                out_root,
+                info,
+            )
+            for n in lengths
         ]
         results += stage
         pool = stage + [r for r in results if r["experiment"]["model"] == best_arch]
