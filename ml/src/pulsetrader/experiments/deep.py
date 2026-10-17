@@ -298,3 +298,86 @@ def run_plan(
             results.append(train_eval(sdh, cfg, out_root, info))
             del sdh
     return results
+
+
+def collect(out_root: Path) -> list[dict[str, Any]]:
+    """All Phase 8 experiment folders (metrics + experiment.json), oldest first."""
+    rows = []
+    for d in sorted(out_root.glob("*-p8-*")):
+        if not (d / "metrics.json").exists():
+            continue
+        e = json.loads((d / "experiment.json").read_text())
+        if e.get("dataset_id") == "probe":
+            continue
+        m = json.loads((d / "metrics.json").read_text())
+        rows.append({"experiment": e, "metrics": {k: _compact(v) for k, v in m.items()}})
+    return rows
+
+
+def render_summary(rows: list[dict[str, Any]], phase7: list[dict[str, Any]]) -> str:
+    """Phase 8 report: every deep run next to the best Phase 7 model on the same label."""
+    p7: dict[str, tuple[str, dict[str, Any]]] = {}
+    for s in phase7:
+        lab = s["experiment"]["label"]
+        m = s["metrics"]
+        best = max(
+            (n for n in ("logistic", "random_forest", "xgboost", "lightgbm") if n in m),
+            key=lambda n: m[n]["mcc"],
+        )
+        p7[lab] = (best, m[best])
+    e0 = rows[0]["experiment"]
+    lines = [
+        "# Phase 8 — deep sequence models (validation)",
+        "",
+        f"Dataset `{e0['dataset_id']}`. Trained on "
+        f"{e0['train_period']['start']}..{e0['train_period']['end']},"
+        f" scored on validation {e0['validation_period']['start']}..{e0['validation_period']['end']}."
+        " Test period not used. PyTorch on 4 CPU threads, no GPU.",
+        "",
+        "Each time step is one 5-minute dataset row of the same stock (84 features after the train-fitted",
+        "preprocessor). Stage A compares architectures at 60 steps on `y_5m_10bp`; stage B varies the",
+        "history length for the best architecture (samples per epoch scaled by 60/length, 4 epochs max);",
+        "stage C runs the best (architecture, length) on the best Phase 7 threshold of each other horizon.",
+        "Selection uses validation MCC.",
+        "",
+        "| Label | Model | Steps | Accuracy | Balanced acc | Macro F1 | MCC | ROC-AUC | Up/down AUC* |"
+        " Brier | ECE | Train-sample acc | Best Phase 7 (MCC) |",
+        "|---|---|---|---|---|---|---|---|---|---|---|---|---|",
+    ]
+    for r in rows:
+        e = r["experiment"]
+        m = next(iter(r["metrics"].values()))
+        b = p7.get(e["label"])
+        ref = f"{b[0]} ({_num(b[1]['mcc'])})" if b else "–"
+        tr = (m.get("train_sample") or {}).get("accuracy")
+        lines.append(
+            f"| {e['label']} | {e['model']} | {e['sequence_length']} | {_pct(m['accuracy'])} | "
+            f"{_pct(m['balanced_accuracy'])} | {_num(m['macro_f1'])} | {_num(m['mcc'])} | "
+            f"{_num(m['roc_auc_ovr'])} | {_num(m.get('updown_auc'))} | {_num(m['brier'])} | "
+            f"{_num(m['ece_top'])} | {_pct(tr)} | {ref} |"
+        )
+    lines += [
+        "",
+        "*Up/down AUC: diagnostic on rows whose label moved (subset chosen by the outcome).",
+        "",
+        "## Selective UP/DOWN (best deep run per label)",
+        "",
+        "| Label | Model | P threshold | Predictions | Coverage | Accuracy | Sign accuracy | MCC |",
+        "|---|---|---|---|---|---|---|---|",
+    ]
+    best_by_label: dict[str, dict[str, Any]] = {}
+    for r in rows:
+        lab = r["experiment"]["label"]
+        m = next(iter(r["metrics"].values()))
+        if lab not in best_by_label or m["mcc"] > next(iter(best_by_label[lab]["metrics"].values()))["mcc"]:
+            best_by_label[lab] = r
+    for lab, r in best_by_label.items():
+        m = next(iter(r["metrics"].values()))
+        for s in m["selective"]:
+            lines.append(
+                f"| {lab} | {r['experiment']['model']} L{r['experiment']['sequence_length']} | "
+                f"{s['threshold']:.2f} | {s['n_predictions']:,} | {_pct(s['coverage'])} | "
+                f"{_pct(s.get('accuracy'))} | {_pct(s.get('sign_accuracy'))} | {_num(s.get('mcc'))} |"
+            )
+    lines.append("")
+    return "\n".join(lines)
