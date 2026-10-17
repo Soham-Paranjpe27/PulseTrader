@@ -227,9 +227,7 @@ class XGBoost:
     def predict_proba(self, X: np.ndarray) -> np.ndarray:
         import xgboost as xgb
 
-        return np.asarray(
-            self.model.predict(xgb.DMatrix(X), iteration_range=(0, self.best_iteration + 1))
-        )
+        return np.asarray(self.model.predict(xgb.DMatrix(X), iteration_range=(0, self.best_iteration + 1)))
 
     def importance(self, names: list[str]) -> dict[str, float]:
         g = self.model.get_score(importance_type="gain")
