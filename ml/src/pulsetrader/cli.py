@@ -1,4 +1,4 @@
-"""Command-line entry points: `pulsetrader fetch|discover|pipeline|security|dataset|audit`."""
+"""Command-line entry points: `pulsetrader fetch|discover|pipeline|security|dataset|audit|classical`."""
 
 from __future__ import annotations
 
@@ -95,6 +95,25 @@ def cmd_audit(args: argparse.Namespace) -> None:
         raise SystemExit("leakage gate FAILED")
 
 
+def cmd_classical(args: argparse.Namespace) -> None:
+    from datetime import UTC, datetime
+
+    from pulsetrader.experiments.classical import RunConfig, run
+
+    p = data_paths()
+    log.info("resources: %s", resources())
+    cfg = RunConfig(dataset=args.name)
+    if args.horizons:
+        cfg.horizons = tuple(int(h) for h in args.horizons.split(","))
+    if args.thresholds:
+        cfg.thresholds = tuple(float(t) for t in args.thresholds.split(","))
+    out = p.root / "experiments"
+    summary = run(p.root, out, cfg)
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S")
+    (out / f"phase7_summary-{stamp}.json").write_text(json.dumps(summary, indent=1, default=str))
+    print(f"{len(summary)} experiments written to {out}")
+
+
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     ap = argparse.ArgumentParser(prog="pulsetrader")
@@ -118,6 +137,11 @@ def main() -> None:
     ds.add_argument("--universe", type=int, default=100)
     ds.add_argument("--sample-every", type=int, default=5)
     ds.set_defaults(func=cmd_dataset)
+    cl = sub.add_parser("classical", help="Phase 7: baselines + classical models, train -> validation")
+    cl.add_argument("--name", default="core100_s5")
+    cl.add_argument("--horizons", default="", help="comma list, e.g. 5,15 (default: all)")
+    cl.add_argument("--thresholds", default="", help="comma list, e.g. 0.001,0.002 (default: all)")
+    cl.set_defaults(func=cmd_classical)
     au = sub.add_parser("audit", help="Phase 6: leakage gate on real data for a built dataset")
     au.add_argument("--name", default="core100_s5")
     au.add_argument("--reports", default="../reports")
