@@ -9,8 +9,12 @@ data/canonical/*
 data/features/*
 data/labels/*
 data/datasets/*
+data/reference/*
+data/canonical_daily/*
+data/experiments/
+data/experiments_*/
 !data/**/.gitkeep
-models/
+/models/
 experiments/*/predictions.parquet
 *.parquet
 !ml/tests/fixtures/*.parquet
