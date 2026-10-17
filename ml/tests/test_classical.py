@@ -72,3 +72,21 @@ def test_inner_split_is_purged_and_chronological(golden_dataset):
     es_first = ds.filter(pl.col("trade_date") >= e["trade_date"].min())["ts"].min()
     assert f["label_end_ts_5"].max() <= es_first
     assert e["ts"].min() >= es_first + __import__("datetime").timedelta(minutes=15)
+
+
+def test_sequences_are_causal_and_within_symbol(golden_dataset):
+    from pulsetrader.datasets.sequences import build
+
+    sd = build(
+        golden_dataset / "datasets" / "ds", 5, (0.001,), train_every=5, es_frac=0.34, embargo_minutes=15
+    )
+    assert set(sd.meta["split"].drop_nulls().unique()) <= {"train", "validation"}  # no test rows
+    idx = sd.usable(sd.val_idx, 4)
+    w = sd.windows(idx, 4)
+    assert w.shape == (len(idx), 4, len(sd.features))
+    assert np.array_equal(w[:, -1, :], sd.X[idx])  # window ends at the prediction row
+    starts = sd.first_row[idx]
+    assert (idx - 3 >= starts).all()  # never spans another symbol
+    ts = sd.meta["ts"].to_numpy()
+    assert (ts[idx - 3] < ts[idx]).all()  # history strictly earlier
+    assert sd.preprocessor.fit_rows == len(sd.fit_idx)
