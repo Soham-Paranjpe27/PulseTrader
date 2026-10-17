@@ -27,4 +27,5 @@ python -m venv .venv && .venv/bin/pip install -e ".[dev,serve,fetch]"
 PULSETRADER_DATA_DIR=../data .venv/bin/pulsetrader fetch      # needs huggingface.co network access
 PULSETRADER_DATA_DIR=../data .venv/bin/pulsetrader discover   # Phase 1 -> reports/
 PULSETRADER_DATA_DIR=../data .venv/bin/pulsetrader pipeline   # Phase 2 -> data/canonical + reports/
+PULSETRADER_DATA_DIR=../data .venv/bin/pulsetrader security   # Phase 3 -> data/reference + reports/
 ```

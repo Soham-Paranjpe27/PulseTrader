@@ -46,6 +46,10 @@ class Paths:
         return self.root / "labels"
 
     @property
+    def reference(self) -> Path:
+        return self.root / "reference"
+
+    @property
     def datasets(self) -> Path:
         return self.root / "datasets"
 

@@ -1,0 +1,30 @@
+{
+  "version": "secmaster-v1",
+  "created_at": "2026-10-17T10:33:41.150542+00:00",
+  "date_range": [
+    "2022-01-03",
+    "2026-01-21"
+  ],
+  "symbols": 2535,
+  "by_type": {
+    "EQUITY": 2116,
+    "ETF": 287,
+    "INDEX": 129,
+    "OTHER": 3
+  },
+  "by_status": {
+    "ACTIVE": 1752,
+    "LISTED_LATER": 783
+  },
+  "experiment_eligible": 1311,
+  "eligibility_rules": {
+    "min_days": 250,
+    "max_zero_volume_frac": 0.2,
+    "min_median_daily_turnover": 10000000.0
+  },
+  "events": {
+    "INTRADAY_JUMP": 211,
+    "OVERNIGHT_GAP": 198
+  },
+  "rename_candidates": 0
+}

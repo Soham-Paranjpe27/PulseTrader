@@ -62,6 +62,15 @@ def cmd_pipeline(args: argparse.Namespace) -> None:
     print(json.dumps({k: v for k, v in m.items() if k != "files"}, indent=2, default=str))
 
 
+def cmd_security(args: argparse.Namespace) -> None:
+    from pulsetrader.security import master
+
+    p = data_paths()
+    log.info("resources: %s", resources())
+    s = master.build(p.canonical, p.reference, Path(args.reports))
+    print(json.dumps(s, indent=2, default=str))
+
+
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     ap = argparse.ArgumentParser(prog="pulsetrader")
@@ -77,6 +86,9 @@ def main() -> None:
     pp.add_argument("--reports", default="../reports")
     pp.add_argument("--include-non-regular", action="store_true")
     pp.set_defaults(func=cmd_pipeline)
+    sm = sub.add_parser("security", help="Phase 3: security master, symbol history, corporate actions")
+    sm.add_argument("--reports", default="../reports")
+    sm.set_defaults(func=cmd_security)
     a = ap.parse_args()
     a.func(a)
 
