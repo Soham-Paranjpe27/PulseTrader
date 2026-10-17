@@ -1,0 +1,121 @@
+{
+  "audit_version": "leakage-audit-v1",
+  "dataset_id": "dataset-v1-features-v2-labels-v1-u100-s5",
+  "passed": true,
+  "checks": [
+    {
+      "name": "single-symbol feature perturbation",
+      "passed": true,
+      "detail": "18 cut-offs on 3 real symbols, 4,696,559 past rows compared, 0 leaks",
+      "evidence": {
+        "symbols": [
+          "VBL",
+          "NAUKRI",
+          "HEROMOTOCO"
+        ],
+        "leaks": {}
+      }
+    },
+    {
+      "name": "market-context perturbation",
+      "passed": true,
+      "detail": "NIFTY perturbed after 3 cut-offs, joined to RELIANCE; 8 market features compared, 0 leaks",
+      "evidence": {
+        "leaks": {}
+      }
+    },
+    {
+      "name": "cross-sectional perturbation",
+      "passed": true,
+      "detail": "other stocks' inputs distorted after 3 cut-offs; ADANIENSOL's 7 relative features compared, 0 leaks",
+      "evidence": {
+        "probe": "ADANIENSOL",
+        "leaks": {}
+      }
+    },
+    {
+      "name": "timestamps and session boundaries",
+      "passed": true,
+      "detail": "7,470,060 rows: availability_ts = bar close, label_end_ts > availability_ts and no label crosses a session for horizons [1, 5, 15, 30, 60]; violations 0",
+      "evidence": {
+        "violations": {}
+      }
+    },
+    {
+      "name": "label recomputation from canonical",
+      "passed": true,
+      "detail": "3,735,775 (row, horizon) labels recomputed for 10 symbols; 0 mismatching series",
+      "evidence": {
+        "symbols": [
+          "LT",
+          "TATAPOWER",
+          "SAIL",
+          "SUNPHARMA",
+          "JSWSTEEL",
+          "DRREDDY",
+          "TATASTEEL",
+          "AMBUJACEM",
+          "CHOLAFIN",
+          "NATIONALUM"
+        ],
+        "mismatches": {}
+      }
+    },
+    {
+      "name": "chronological split, purge and embargo",
+      "passed": true,
+      "detail": "periods train 2022-01-03..2024-11-04, validation 2024-11-05..2025-06-13, test 2025-06-16..2026-01-21; 2,400 rows purged/embargoed; problems: none",
+      "evidence": {
+        "bounds": {
+          "validation": {
+            "split": "validation",
+            "min_ts": "2024-11-05 10:15:00+05:30",
+            "max_ts": "2025-06-13 15:25:00+05:30",
+            "max_end": "2025-06-13 16:26:00+05:30",
+            "d0": "2024-11-05",
+            "d1": "2025-06-13",
+            "rows": "1116225"
+          },
+          "test": {
+            "split": "test",
+            "min_ts": "2025-06-16 10:15:00+05:30",
+            "max_ts": "2026-01-21 15:25:00+05:30",
+            "max_end": "2026-01-21 16:26:00+05:30",
+            "d0": "2025-06-16",
+            "d1": "2026-01-21",
+            "rows": "1123575"
+          },
+          "train": {
+            "split": "train",
+            "min_ts": "2022-01-03 13:25:00+05:30",
+            "max_ts": "2024-11-04 15:25:00+05:30",
+            "max_end": "2024-11-04 16:26:00+05:30",
+            "d0": "2022-01-03",
+            "d1": "2024-11-04",
+            "rows": "5227860"
+          }
+        },
+        "problems": []
+      }
+    },
+    {
+      "name": "point-in-time universe",
+      "passed": true,
+      "detail": "liquidity ranking window ends 2023-01-04; training ends 2024-11-04",
+      "evidence": {
+        "ranking_window": [
+          "2022-01-03",
+          "2023-01-04"
+        ]
+      }
+    },
+    {
+      "name": "scaler isolation",
+      "passed": true,
+      "detail": "fit on mixed splits refused=True; train-only means match=True; fit period ends 2024-11-04 15:00:00+05:30 (train max)",
+      "evidence": {
+        "train_rows": 836487
+      }
+    }
+  ]
+}

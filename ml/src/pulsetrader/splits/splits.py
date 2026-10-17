@@ -39,16 +39,29 @@ def date_split(dates: list[date], fractions: tuple[float, float, float] = (0.70,
 
 
 def assign(
-    df: pl.DataFrame, periods: list[Period], label_end_col: str, embargo_minutes: int = 0
+    df: pl.DataFrame,
+    periods: list[Period],
+    label_end_col: str,
+    embargo_minutes: int = 0,
+    starts: dict[str, datetime] | None = None,
 ) -> pl.DataFrame:
-    """Add `split` column; rows lost to purge/embargo get split=null and `purged`=True."""
+    """Add `split` column; rows lost to purge/embargo get split=null and `purged`=True.
+
+    `starts` gives each period's first timestamp in the full dataset. Pass it when `df` is only a
+    chunk of the data (e.g. one month), otherwise the chunk's own first row would be mistaken for the
+    start of the period.
+    """
     expr = pl.lit(None, dtype=pl.Utf8)
     for p in periods:
         expr = pl.when(pl.col("trade_date").is_between(p.start, p.end)).then(pl.lit(p.name)).otherwise(expr)
     out = df.with_columns(expr.alias("split"))
     drop = pl.lit(False)
     for prev, nxt in zip(periods, periods[1:], strict=False):
-        nxt_start = out.filter(pl.col("split") == nxt.name)["ts"].min()
+        nxt_start = (
+            starts.get(nxt.name)
+            if starts is not None
+            else out.filter(pl.col("split") == nxt.name)["ts"].min()
+        )
         if nxt_start is None:
             continue
         if not isinstance(nxt_start, datetime):

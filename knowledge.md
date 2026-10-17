@@ -1,20 +1,16 @@
 # knowledge.md — PulseTrader V4 project state
 
-Last updated: 2026-10-17.
+Last updated: 2026-10-17 (phases 4-6).
 
 ## Current phase
-Phases 0–3 DONE on real data. Next: Phase 4 (feature engine on real data). Feature/label/split code
-exists and passes golden tests but has not yet been run on real data.
+Phases 0–6 DONE on real data. Next: Phase 7 (baselines) on `data/datasets/core100_s5`.
 
 ## Next exact action
-1. Phase 4: run the feature engine on the experiment-eligible equities
-   (`data/reference/security_master.parquet`, `experiment_eligible`), one symbol file at a time,
-   plus market context from the NIFTY / BANKNIFTY / INDIA VIX index series. Check the feature
-   engine uses only scale-free inputs (prices are back-adjusted, see corporate_action_audit.md).
-   Disk is tight (~12 GB free): estimate feature size on a few symbols first; a full 711M-row
-   feature set will not fit, so write features for a chosen universe/period, or compute on the fly.
-2. Phase 5 labels on real data, excluding `flagged_days` (security/master.py) rows.
-3. Phase 6 leakage gate re-run on real data.
+1. Phase 7 baselines on train -> validation only (majority class, persistence/momentum sign,
+   logistic regression on the 84 features via `Preprocessor`). Report accuracy, balanced accuracy,
+   MCC and coverage per horizon/threshold. Use `features.json` as the only model inputs (the dataset
+   also holds fret_*/fprice_*/label_end_ts_*/y_* columns, which are targets, never inputs).
+2. Test split (2025-06-16..2026-01-21) stays untouched.
 
 ## Environment
 4 CPU, ~15 GB RAM, ~252 GB disk but ~12 GB free after data, no GPU. Python 3.13 venv in ml/.venv.
@@ -48,16 +44,34 @@ disk; data/ lives there and is NOT in git). /mnt/project-files/pulsetrader is an
 - Index series for market context: NIFTY, BANKNIFTY, FINNIFTY, MIDCPNIFTY, NIFTYNXT50, INDIA VIX,
   sector indices ("NIFTY IT", ...).
 
+## Research dataset (Phases 4-5, dataset-v1) — data/datasets/core100_s5, reports/research_dataset_core100_s5.json
+- `pulsetrader dataset` (373 s, 2.6 GB peak RAM, 1.8 GB on disk, 51 monthly parquet files).
+- Universe: top 100 eligible equities by median daily turnover over 2022-01-03..2023-01-04 only.
+- Rows sampled every 5 minutes; first 250 bars, sessions <370 bars and corporate-action sessions
+  (+ next session) excluded. 7,470,060 rows, 84 features (features-v2), labels for 1/5/15/30/60 min
+  at 5/10/20/30/50 bp.
+- Splits: train 2022-01-03..2024-11-04 (5,227,860 rows), validation 2024-11-05..2025-06-13
+  (1,116,225), test 2025-06-16..2026-01-21 (1,123,575); 2,400 rows purged/embargoed (60 min).
+- Train label balance (down/flat/up): y_15m_10bp 0.317/0.382/0.300, y_15m_20bp 0.192/0.625/0.183,
+  y_60m_30bp 0.248/0.522/0.230. The flat class dominates at higher thresholds, so plain accuracy
+  is misleading; balanced accuracy and MCC are required.
+
+## Leakage gate (Phase 6) — reports/leakage_audit_real.md: PASSED on real data
+`pulsetrader audit`: perturbation (single-symbol, NIFTY market context, cross-sectional), timestamps,
+3.7M labels recomputed from canonical, purge/embargo, point-in-time universe, scaler isolation.
+
 ## Architecture
 - `ml/src/pulsetrader/`: config, data/{schema,validate,io,discovery,pipeline},
   security/{lists,master}, features/{engine,preprocess}, labels/labels, splits/splits, eval/metrics,
-  serve/app (health/ready only), cli (fetch, discover, pipeline, security).
+  datasets/build, audit/leakage, serve/app (health/ready only),
+  cli (fetch, discover, pipeline, security, dataset, audit).
 - Docker baseline: docker-compose (postgres, redis, ml-service). ml/Dockerfile. CI: .github/workflows/ci.yml.
 - Backend (NestJS) and frontend (Next.js): not started.
 
 ## Versions
 - schema `canonical-v1`, processing `pipeline-v2`, security master `secmaster-v1`,
-  features `features-v1`, labels `labels-v1`.
+  features `features-v2` (scale-free only), labels `labels-v1`, dataset builder `dataset-v1`,
+  audit `leakage-audit-v1`.
 - Dataset: `canonical-v1-8cc94bf262aa`.
 - Model versions / experiments: none.
 
@@ -78,9 +92,9 @@ disk; data/ lives there and is NOT in git). /mnt/project-files/pulsetrader is an
 | 1 Discovery | DONE on real data (reports/dataset_manifest.json, data_inventory.md) |
 | 2 Pipeline | DONE on real data (reports/data_quality_report.md), 9 min, 6.9 GB peak RAM |
 | 3 Security master | DONE (reports/security_master.md, corporate_action_audit.md), 40 tests pass |
-| 4 Features | CODE DONE (golden-tested); NOT run on real data |
-| 5 Labels | CODE DONE (golden-tested); NOT run on real data |
-| 6 Leakage audit | PASSED on golden data; must re-run on real data |
+| 4 Features | DONE on real data (features-v2, 84 features, core100_s5) |
+| 5 Labels | DONE on real data (labels recomputed from canonical in the audit) |
+| 6 Leakage audit | PASSED on real data (reports/leakage_audit_real.md) |
 | 7–20 | NOT STARTED |
 
 ## Known issues
@@ -89,5 +103,5 @@ disk; data/ lives there and is NOT in git). /mnt/project-files/pulsetrader is an
 - Instrument classification of 8 tickers is uncertain (listed in reports/security_master.md).
 
 ## Commands
-See AGENTS.md. From ml/: `PULSETRADER_DATA_DIR=../data .venv/bin/pulsetrader {fetch,discover,pipeline,security}`.
-Tests: `.venv/bin/pytest` (40 passed on 2026-10-17).
+See AGENTS.md. From ml/: `PULSETRADER_DATA_DIR=../data .venv/bin/pulsetrader {fetch,discover,pipeline,security,dataset,audit}`.
+Tests: `.venv/bin/pytest` (43 passed on 2026-10-17).

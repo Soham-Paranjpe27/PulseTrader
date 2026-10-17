@@ -14,7 +14,7 @@ BAR_MINUTES = 1
 
 SCHEMA_VERSION = "canonical-v1"
 PROCESSING_VERSION = "pipeline-v2"
-FEATURE_VERSION = "features-v1"
+FEATURE_VERSION = "features-v2"
 LABEL_VERSION = "labels-v1"
 
 HORIZONS = (1, 5, 15, 30, 60)

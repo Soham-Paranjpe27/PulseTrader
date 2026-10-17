@@ -7,6 +7,10 @@ This is enforced by the perturbation tests in tests/test_leakage.py.
 
 Rolling windows run over consecutive bars of a symbol (they span overnight gaps); intraday
 features reset each trade_date.
+
+All model features are scale-free (returns, ratios, normalised indicators). Historical prices and
+volumes are back-adjusted by the data vendor using later corporate actions, so absolute price or
+volume levels (ATR in rupees, log volume) are not point-in-time and are not features (features-v2).
 """
 
 from __future__ import annotations
@@ -123,7 +127,6 @@ def single_symbol_exprs(fs: FeatureSet) -> list[list[pl.Expr]]:
         _safe(100 * _wilder(plus_dm, 14) / atr).alias("di_plus_14"),
         _safe(100 * _wilder(minus_dm, 14) / atr).alias("di_minus_14"),
         _safe(atr / c).alias("atr_pct_14"),
-        atr.alias("atr_14"),
     ]
     dx = _safe(
         100
@@ -144,7 +147,6 @@ def single_symbol_exprs(fs: FeatureSet) -> list[list[pl.Expr]]:
     st1.append(_safe(4 * c.rolling_std(20).over(S) / c.rolling_mean(20).over(S)).alias("bb_width_20"))
     fs.add(
         "TECHNICAL",
-        "atr_14",
         "atr_pct_14",
         "vol_20",
         "vol_60",
@@ -159,14 +161,13 @@ def single_symbol_exprs(fs: FeatureSet) -> list[list[pl.Expr]]:
         _safe(v / v.shift(1).over(S) - 1).alias("volume_chg"),
         _safe(v / vma20).alias("rel_volume_20"),
         _safe((v - vma20) / v.rolling_std(20).over(S)).alias("volume_z_20"),
-        _safe((v + 1).log()).alias("log_volume"),
     ]
     st2.append(_safe(pl.rolling_corr(r1, (v + 1).log(), window_size=20).over(S)).alias("pv_corr_20"))
     tpv = (tp * v).cum_sum().over(D)
     cv = v.cum_sum().over(D)
     st1.append(_safe(tpv / cv).alias("vwap"))
     st2.append(_safe(c / pl.col("vwap") - 1).alias("vwap_dist"))
-    fs.add("VOLUME", "volume_chg", "rel_volume_20", "volume_z_20", "log_volume", "pv_corr_20", "vwap_dist")
+    fs.add("VOLUME", "volume_chg", "rel_volume_20", "volume_z_20", "pv_corr_20", "vwap_dist")
 
     # --- intraday (reset per trade_date)
     bar_idx = pl.int_range(pl.len()).over(D)
@@ -263,6 +264,16 @@ def add_market_context(
     return feats.join(right, on="ts", how="left", maintain_order="left")
 
 
+def add_level(
+    feats: pl.DataFrame, series: pl.DataFrame, name: str, fs: FeatureSet, group: str = "MARKET"
+) -> pl.DataFrame:
+    """Join another instrument's same-bar close as a level feature (e.g. INDIA VIX, which is a
+    volatility percentage and not split-adjusted, so its level is meaningful)."""
+    right = series.select("ts", pl.col("close").alias(name))
+    fs.add(group, name)
+    return feats.join(right, on="ts", how="left", maintain_order="left")
+
+
 def add_relative_strength(
     feats: pl.DataFrame, fs: FeatureSet, sector: pl.DataFrame | None = None
 ) -> pl.DataFrame:
@@ -287,7 +298,15 @@ def add_relative_strength(
         ),
         pl.col("symbol").count().over("ts").alias("xs_count"),
     ]
-    names += ["rs_rank_15", "volume_rank", "volatility_rank"]
+    # market breadth: share of the *other* stocks up over 15 minutes (leave-one-out)
+    up = (pl.col("ret_15") > 0).cast(pl.Float64)
+    others = pl.col("ret_15").count().over("ts") - pl.col("ret_15").is_not_null().cast(pl.Int64)
+    exprs.append(
+        _safe(
+            pl.when(others > 0).then((up.sum().over("ts") - up.fill_null(0)) / others).otherwise(None)
+        ).alias("breadth_15")
+    )
+    names += ["rs_rank_15", "volume_rank", "volatility_rank", "breadth_15"]
     out = feats.with_columns(exprs)
     if sector is not None:
         out = out.join(sector, on="symbol", how="left", maintain_order="left")

@@ -1,4 +1,4 @@
-"""Command-line entry points: `pulsetrader fetch|discover|pipeline`."""
+"""Command-line entry points: `pulsetrader fetch|discover|pipeline|security|dataset|audit`."""
 
 from __future__ import annotations
 
@@ -71,6 +71,30 @@ def cmd_security(args: argparse.Namespace) -> None:
     print(json.dumps(s, indent=2, default=str))
 
 
+def cmd_dataset(args: argparse.Namespace) -> None:
+    from pulsetrader.datasets.build import DatasetConfig, build
+
+    p = data_paths()
+    log.info("resources: %s", resources())
+    cfg = DatasetConfig(universe_size=args.universe, sample_every=args.sample_every)
+    m = build(p.root, p.datasets / args.name, cfg)
+    print(json.dumps({k: v for k, v in m.items() if k not in ("label_distribution", "universe")}, indent=2))
+
+
+def cmd_audit(args: argparse.Namespace) -> None:
+    from pulsetrader.audit import leakage
+
+    p = data_paths()
+    report = leakage.run(p.root, p.datasets / args.name)
+    out = Path(args.reports)
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "leakage_audit_real.json").write_text(json.dumps(report, indent=2, default=str))
+    (out / "leakage_audit_real.md").write_text(leakage.render(report))
+    print(leakage.render(report))
+    if not report["passed"]:
+        raise SystemExit("leakage gate FAILED")
+
+
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     ap = argparse.ArgumentParser(prog="pulsetrader")
@@ -89,6 +113,15 @@ def main() -> None:
     sm = sub.add_parser("security", help="Phase 3: security master, symbol history, corporate actions")
     sm.add_argument("--reports", default="../reports")
     sm.set_defaults(func=cmd_security)
+    ds = sub.add_parser("dataset", help="Phases 4-5: features + labels + splits for a research universe")
+    ds.add_argument("--name", default="core100_s5")
+    ds.add_argument("--universe", type=int, default=100)
+    ds.add_argument("--sample-every", type=int, default=5)
+    ds.set_defaults(func=cmd_dataset)
+    au = sub.add_parser("audit", help="Phase 6: leakage gate on real data for a built dataset")
+    au.add_argument("--name", default="core100_s5")
+    au.add_argument("--reports", default="../reports")
+    au.set_defaults(func=cmd_audit)
     a = ap.parse_args()
     a.func(a)
 
