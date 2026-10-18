@@ -35,6 +35,20 @@ def _priors(y: np.ndarray) -> np.ndarray:
     return np.bincount(y, minlength=3).astype(float) / max(len(y), 1)
 
 
+def class_weights(y: np.ndarray, mode: str | None) -> np.ndarray | None:
+    """Per-row weights. "balanced": each class gets equal total weight (training rows only)."""
+    if mode in (None, "none"):
+        return None
+    if mode != "balanced":
+        raise ValueError(f"unknown class_weight {mode}")
+    counts = np.bincount(y, minlength=3).astype(float)
+    w = len(y) / (3 * np.where(counts == 0, 1.0, counts))
+    return np.asarray(w[y], dtype=np.float64)
+
+
+_NOT_BOOSTER = ("max_rounds", "early_stopping", "class_weight")
+
+
 @dataclass
 class Majority:
     name: str = "majority"
@@ -163,10 +177,11 @@ class LightGBM:
     def fit(self, X: np.ndarray, y: np.ndarray, X_es: np.ndarray, y_es: np.ndarray) -> None:
         import lightgbm as lgb
 
-        p = {k: v for k, v in self.params.items() if k not in ("max_rounds", "early_stopping")}
+        p = {k: v for k, v in self.params.items() if k not in _NOT_BOOSTER}
         p["seed"] = SEED
-        dtrain = lgb.Dataset(X, y, free_raw_data=True)
-        des = lgb.Dataset(X_es, y_es, reference=dtrain)
+        cw = self.params.get("class_weight")
+        dtrain = lgb.Dataset(X, y, weight=class_weights(y, cw), free_raw_data=True)
+        des = lgb.Dataset(X_es, y_es, weight=class_weights(y_es, cw), reference=dtrain)
         self.model = lgb.train(
             p,
             dtrain,
@@ -210,10 +225,11 @@ class XGBoost:
     def fit(self, X: np.ndarray, y: np.ndarray, X_es: np.ndarray, y_es: np.ndarray) -> None:
         import xgboost as xgb
 
-        p = {k: v for k, v in self.params.items() if k not in ("max_rounds", "early_stopping")}
+        p = {k: v for k, v in self.params.items() if k not in _NOT_BOOSTER}
         p["seed"] = SEED
-        dtrain = xgb.DMatrix(X, label=y)
-        des = xgb.DMatrix(X_es, label=y_es)
+        cw = self.params.get("class_weight")
+        dtrain = xgb.DMatrix(X, label=y, weight=class_weights(y, cw))
+        des = xgb.DMatrix(X_es, label=y_es, weight=class_weights(y_es, cw))
         self.model = xgb.train(
             p,
             dtrain,

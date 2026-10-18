@@ -129,6 +129,22 @@ def cmd_deep(args: argparse.Namespace) -> None:
     print(f"{len(results)} experiments written to {out}")
 
 
+def cmd_optimize(args: argparse.Namespace) -> None:
+    from datetime import UTC, datetime
+
+    from pulsetrader.experiments.optimize import run_phase9
+
+    p = data_paths()
+    log.info("resources: %s", resources())
+    out = p.root / "experiments"
+    phase7_path = Path(args.phase7)
+    phase7 = json.loads(phase7_path.read_text()) if phase7_path.exists() else None
+    results = run_phase9(p.root, out, args.steps, args.name, phase7, n_trials=args.trials)
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S")
+    (out / f"phase9_{args.steps}-{stamp}.json").write_text(json.dumps(results, indent=1, default=str))
+    print(f"{len(results)} experiments written to {out}")
+
+
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     ap = argparse.ArgumentParser(prog="pulsetrader")
@@ -161,6 +177,12 @@ def main() -> None:
     dp.add_argument("--name", default="core100_s5")
     dp.add_argument("--stages", default="ABC", help="A: architectures, B: lengths, C: other horizons")
     dp.set_defaults(func=cmd_deep)
+    op = sub.add_parser("optimize", help="Phase 9: walk-forward, Optuna, feature selection, ensembles")
+    op.add_argument("--name", default="core100_s5")
+    op.add_argument("--steps", default="WTFE", help="W walk-forward, T Optuna, F features, E ensembles")
+    op.add_argument("--trials", type=int, default=25)
+    op.add_argument("--phase7", default="../reports/phase7_classical.json")
+    op.set_defaults(func=cmd_optimize)
     au = sub.add_parser("audit", help="Phase 6: leakage gate on real data for a built dataset")
     au.add_argument("--name", default="core100_s5")
     au.add_argument("--reports", default="../reports")

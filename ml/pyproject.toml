@@ -12,6 +12,7 @@ dependencies = [
   "lightgbm>=4.0",
   "xgboost>=2.0",
   "pyyaml>=6",
+  "optuna>=3.6",
 ]
 
 [project.optional-dependencies]
