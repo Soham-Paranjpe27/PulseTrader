@@ -3,16 +3,17 @@
 Last updated: 2026-10-17 18:45 UTC (phase 8 paused).
 
 ## Current phase
-Phases 0–8 DONE on real data (Phase 8 finished 2026-10-18). Next: Phase 9.
+Phases 0–9 DONE on real data (Phase 9 finished 2026-10-18). Next: Phase 10 (calibration).
 
 ## Next exact action
-1. Phase 9 (optimisation): Optuna on LightGBM/XGBoost (validation MCC, inner early-stopping split),
-   feature selection fit on train only, probability-threshold optimisation for selective UP/DOWN,
-   ensembles (GBM + transformer probabilities), walk-forward evaluation inside 2022-01..2025-06.
-   Test period (2025-06-16..2026-01-21) stays unused.
-2. If the container was recycled, data/ is gone: torch needs `pip install torch --index-url
-   https://download.pytorch.org/whl/cpu` (download.pytorch.org and download-r2.pytorch.org are allowed), then
-   `pulsetrader fetch`, `pipeline`, `security`, `dataset` (~35 min). Phase 7/8 metrics are in reports/*.json.
+1. Phase 10 (calibration): Platt and isotonic on the tuned LightGBM y_1m_5bp / y_5m_10bp models, fit on
+   out-of-fold walk-forward predictions (folds F1-F4), scored on validation (F5): Brier, ECE,
+   reliability curve; store raw and calibrated probability. Test period stays unused.
+2. Tuned params: `data/experiments/*-p9-optuna-lightgbm-<label>-*/metrics.json` (`best_params`), also in
+   reports/phase9_optimization.json.
+3. If the container was recycled, data/ is gone: torch needs `pip install torch --index-url
+   https://download.pytorch.org/whl/cpu`, then `pulsetrader fetch`, `pipeline`, `security`, `dataset`
+   (~35 min). Phase 7-9 metrics are in reports/*.json.
 
 ## Environment
 4 CPU, ~15 GB RAM, ~252 GB disk but ~12 GB free after data, no GPU. Python 3.13 venv in ml/.venv.
@@ -89,6 +90,18 @@ PyTorch 2.14 CPU. Sequences = last L 5-minute dataset rows of the same stock (da
 - Conclusion: deep models tie gradient boosting (gaps 0.001-0.005 MCC, single seed = noise); selective
   UP/DOWN sign accuracy 50-58% at <=7% coverage. No usable high-confidence regime.
 
+## Phase 9 results (optimize-v1, DONE 2026-10-18) — reports/phase9_optimization.md, docs/walk-forward.md
+Folds: first 40% of train dates = training only; F1-F4 = 4 equal windows over the rest of train; F5 = validation.
+Purge (train label end <= window start), 60-min embargo, preprocessor fit per window, test never read.
+- Walk-forward LightGBM (defaults), mean MCC over 5 folds, std ~0.01: 1m_5bp 0.174, 5m_10bp 0.165,
+  15m_20bp 0.142, 30m_20bp 0.137, 60m_20bp 0.119 (chosen threshold per horizon). Validation is the weakest fold.
+- Optuna (25 TPE trials, objective = mean MCC on F3+F4): balanced class weights + lr ~0.03 win.
+  Validation MCC y_1m_5bp 0.166 -> 0.194 (acc 50.1%, bal 45.2%); y_5m_10bp 0.155 -> 0.168 (acc 48.0%, bal 43.1%).
+- Feature selection (decided on F4): top-20 by permutation ~= all 84 (val MCC 0.154 vs 0.155); technical
+  group matters most. Ensembles (LGB+XGB weighted/stacked, LGB+transformer) within +-0.004 MCC: no gain.
+- Selective UP/DOWN (threshold chosen OOF): ~4-5% coverage, sign accuracy 51-54%. Gate: NOT VERIFIED.
+- Lesson: loading a new horizon while the previous DevData lives exceeds 15 GB; `_free(dev)` between horizons.
+
 ## Architecture
 - `ml/src/pulsetrader/`: config, data/{schema,validate,io,discovery,pipeline},
   security/{lists,master}, features/{engine,preprocess}, labels/labels, splits/splits, eval/metrics,
@@ -127,7 +140,8 @@ PyTorch 2.14 CPU. Sequences = last L 5-minute dataset rows of the same stock (da
 | 6 Leakage audit | PASSED on real data (reports/leakage_audit_real.md) |
 | 7 Classical ML | DONE (reports/phase7_classical.md); no model verified, see Phase 7 results |
 | 8 Deep learning | DONE 2026-10-18: transformer L120 ties GBM (best MCC 0.167 on y_1m_5bp); reports/phase8_deep.md |
-| 9–20 | NOT STARTED |
+| 9 Optimisation | DONE 2026-10-18: walk-forward, Optuna, feature selection, ensembles; best val MCC 0.194 (tuned LightGBM y_1m_5bp); reports/phase9_optimization.md |
+| 10–20 | NOT STARTED |
 
 ## Known issues
 - No market-data provider credentials; live phases will use the provider interface, MockProvider in tests only.
@@ -135,5 +149,5 @@ PyTorch 2.14 CPU. Sequences = last L 5-minute dataset rows of the same stock (da
 - Instrument classification of 8 tickers is uncertain (listed in reports/security_master.md).
 
 ## Commands
-See AGENTS.md. From ml/: `PULSETRADER_DATA_DIR=../data .venv/bin/pulsetrader {fetch,discover,pipeline,security,dataset,audit,classical}`.
-Tests: `.venv/bin/pytest` (48 passed on 2026-10-17).
+See AGENTS.md. From ml/: `PULSETRADER_DATA_DIR=../data .venv/bin/pulsetrader {fetch,discover,pipeline,security,dataset,audit,classical,deep,optimize}`.
+Tests: `.venv/bin/pytest` (54 passed on 2026-10-18).
