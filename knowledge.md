@@ -3,23 +3,16 @@
 Last updated: 2026-10-17 18:45 UTC (phase 8 paused).
 
 ## Current phase
-Phases 0–7 DONE on real data. Phase 8 (deep learning) IN PROGRESS, paused 2026-10-17 18:45 UTC by the user.
+Phases 0–8 DONE on real data (Phase 8 finished 2026-10-18). Next: Phase 9.
 
 ## Next exact action
-1. Finish Phase 8 stage C (two runs left), from `ml/`:
-   `PULSETRADER_DATA_DIR=../data .venv/bin/python -c "from pathlib import Path; from pulsetrader.experiments.deep import DeepConfig, train_eval; from pulsetrader.datasets.sequences import build; ..."`
-   i.e. `train_eval` with DeepConfig(arch="transformer", length=120, samples_per_epoch=200_000, max_epochs=4)
-   for (horizon 30, threshold 0.0020) and (horizon 60, threshold 0.0030); each needs `build(ds_dir, h, THRESHOLDS)`
-   and the `info` dict built as in `run_plan`. About 35 min each on 4 CPUs.
-   Easiest: temporarily set STAGE_C_LABELS to those two and run
-   `run_plan(..., stages="C", arch="transformer", length=120, samples_per_epoch=200_000, max_epochs=4)`.
-2. Re-render reports/phase8_deep.md with `experiments.deep.collect` + `render_summary`, drop the IN PROGRESS line,
-   update this file, push. Then Phase 9 (Optuna, feature selection, threshold optimisation, walk-forward).
-3. If the container was recycled, data/ is gone: torch needs `pip install torch --index-url
+1. Phase 9 (optimisation): Optuna on LightGBM/XGBoost (validation MCC, inner early-stopping split),
+   feature selection fit on train only, probability-threshold optimisation for selective UP/DOWN,
+   ensembles (GBM + transformer probabilities), walk-forward evaluation inside 2022-01..2025-06.
+   Test period (2025-06-16..2026-01-21) stays unused.
+2. If the container was recycled, data/ is gone: torch needs `pip install torch --index-url
    https://download.pytorch.org/whl/cpu` (download.pytorch.org and download-r2.pytorch.org are allowed), then
-   `pulsetrader fetch`, `pipeline`, `security`, `dataset` (~35 min) before step 1. Phase 7/8 experiment folders
-   would be lost too; their metrics are kept in reports/phase7_classical.json and reports/phase8_deep.json.
-4. Test split (2025-06-16..2026-01-21) stays untouched.
+   `pulsetrader fetch`, `pipeline`, `security`, `dataset` (~35 min). Phase 7/8 metrics are in reports/*.json.
 
 ## Environment
 4 CPU, ~15 GB RAM, ~252 GB disk but ~12 GB free after data, no GPU. Python 3.13 venv in ml/.venv.
@@ -84,16 +77,17 @@ boosted trees early-stop on the last 10% of train dates (purged + 60-min embargo
   usable number of predictions. Learned probabilities are well calibrated (ECE <= 0.02).
 - Train-sample accuracy is close to validation (no large overfit).
 
-## Phase 8 results so far (deep-v1) — reports/phase8_deep.md
+## Phase 8 results (deep-v1, DONE 2026-10-18) — reports/phase8_deep.md
 PyTorch 2.14 CPU. Sequences = last L 5-minute dataset rows of the same stock (datasets/sequences.py).
 - Stage A (y_5m_10bp, L=60): transformer MCC 0.157, GRU+attn 0.155, LSTM+attn 0.154, LSTM 0.153,
   GRU 0.150; all ~56.4% accuracy vs majority 55.1%. Same level as XGBoost (0.157).
 - Stage B (transformer): L=30 0.146, L=60 0.157, L=120 0.161 (best), L=252 0.139 (L>=120 trained with
   samples scaled by 60/L, max 4 epochs, to fit CPU time).
 - Stage C (transformer L=120): y_1m_5bp MCC 0.167 (acc 59.2%, LightGBM 0.166); y_15m_20bp 0.136
-  (acc 61.2%, XGBoost 0.134). y_30m_20bp and y_60m_30bp not run yet.
-- Conclusion so far: deep models match but do not beat gradient boosting; selective UP/DOWN sign
-  accuracy stays ~52% at <8% coverage.
+  (acc 61.2%, XGBoost 0.134); y_30m_20bp 0.128 (acc 49.2%, bal 38.6%, XGBoost 0.123); y_60m_30bp 0.113
+  (acc 50.6%, bal 37.3%, LightGBM 0.108).
+- Conclusion: deep models tie gradient boosting (gaps 0.001-0.005 MCC, single seed = noise); selective
+  UP/DOWN sign accuracy 50-58% at <=7% coverage. No usable high-confidence regime.
 
 ## Architecture
 - `ml/src/pulsetrader/`: config, data/{schema,validate,io,discovery,pipeline},
@@ -132,7 +126,7 @@ PyTorch 2.14 CPU. Sequences = last L 5-minute dataset rows of the same stock (da
 | 5 Labels | DONE on real data (labels recomputed from canonical in the audit) |
 | 6 Leakage audit | PASSED on real data (reports/leakage_audit_real.md) |
 | 7 Classical ML | DONE (reports/phase7_classical.md); no model verified, see Phase 7 results |
-| 8 Deep learning | IN PROGRESS (stage C: 2 of 4 horizons left), paused by user |
+| 8 Deep learning | DONE 2026-10-18: transformer L120 ties GBM (best MCC 0.167 on y_1m_5bp); reports/phase8_deep.md |
 | 9–20 | NOT STARTED |
 
 ## Known issues
