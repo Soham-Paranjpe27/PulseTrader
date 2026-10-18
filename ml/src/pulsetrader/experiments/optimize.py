@@ -1007,6 +1007,15 @@ def latest(out_root: Path, pattern: str) -> Path | None:
     return hits[-1] if hits else None
 
 
+def _free(dev: DevData) -> None:
+    """Release a horizon's data before loading the next (Optuna keeps reference cycles alive)."""
+    import gc
+
+    dev._cache.clear()
+    dev.df = dev.df.clear()
+    gc.collect()
+
+
 def run_phase9(
     data_root: Path,
     out_root: Path,
@@ -1034,7 +1043,7 @@ def run_phase9(
                 if lab in keys:
                     results.append(walk_forward(dev, out_root, lab, "xgboost"))
                     results.append(walk_forward(dev, out_root, lab, scheme="rolling"))
-            del dev
+            _free(dev)
     if "T" in steps:
         for h, t in key_labels:
             lab = label_name(h, t)
@@ -1042,12 +1051,12 @@ def run_phase9(
             tr = tune(dev, out_root, lab, n_trials)
             results.append(tr)
             results.append(walk_forward(dev, out_root, lab, params=tr["result"]["best_params"], tag="tuned"))
-            del dev
+            _free(dev)
     if "F" in steps:
         h, t = key_labels[0]
         dev = load_dev(data_root, h, (t,), dataset)
         results.append(feature_selection(dev, out_root, label_name(h, t)))
-        del dev
+        _free(dev)
     if "E" in steps:
         for h, t in key_labels:
             lab = label_name(h, t)
