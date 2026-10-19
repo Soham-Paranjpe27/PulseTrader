@@ -23,8 +23,23 @@
 - Writes send the `csrf_token` cookie value in `x-csrf-token` (double submit); refresh is a CSRF-checked POST.
 - Post-login redirects accept only same-site relative paths (no open redirect).
 - Security headers on every page: CSP (`connect-src 'self'`, `frame-ancestors 'none'`, `form-action 'self'`),
-  `X-Frame-Options: DENY`, `nosniff`, strict referrer policy, permissions policy. Inline scripts are still
-  allowed (Next.js bootstrap); a nonce CSP is a Phase 20 item.
+  `X-Frame-Options: DENY`, `nosniff`, strict referrer policy, permissions policy. Since Phase 20 scripts
+  run under a per-request nonce CSP (see below).
 - Only UI preferences (theme, chart mode, chosen model) are stored in localStorage.
 - `npm audit --omit=dev`: 0 (postcss pinned to 8.5.31 via overrides). Dev-only `braces` advisory remains.
 - The API trusts one proxy hop when `TRUST_PROXY=1`; expose the API directly only without that setting.
+
+## Production hardening (Phase 20)
+Evidence: reports/phase20_security.md (52/52 black-box checks on the running stack), reports/phase20_hardening.md.
+
+| Finding / control | Change |
+|---|---|
+| Client could spoof `X-Forwarded-For` through the web proxy and so dodge the login rate limit and fake audit-log IPs | `web/xff-guard.cjs` (preloaded with `node -r`) rewrites the header to the real peer address, trusting only `WEB_TRUSTED_PROXY_HOPS` proxies in front of the web app |
+| API port 3001 was published by compose, bypassing the one trusted hop | compose uses `expose` only; the API is reachable through the web app and the internal network |
+| Inline scripts allowed by CSP | per-request nonce CSP from `web/src/middleware.ts` (`script-src 'self' 'nonce-…' 'strict-dynamic'`, `object-src 'none'`, `frame-ancestors 'none'`, `base-uri`/`form-action 'self'`); browser e2e checks there are no violations |
+| Concurrent paper trades lost cash updates / could oversell | trade runs in one transaction with `SELECT … FOR UPDATE` on the portfolio row |
+| Duplicate-create races returned 500 | Prisma errors mapped globally: unique violation 409, missing record 404, database unreachable 503 `DATABASE_UNAVAILABLE` |
+| A changed model file would be served silently | `sha256.json` per artifact; the ML service refuses an artifact whose files no longer match |
+| Secrets in history | gitleaks over the full history in CI (0 leaks); detect-secrets hits are placeholders and test fixtures only |
+| Dependencies | `npm audit --omit=dev` 0 (api, web), `pip-audit` 0 (setuptools >= 83) |
+| CI workflow mistakes | actionlint in CI |

@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AdminModule } from './admin/admin.module';
@@ -24,6 +24,7 @@ import { ResearchModule } from './research/research.module';
 import { StocksModule } from './stocks/stocks.module';
 import { UsersModule } from './users/users.module';
 import { WatchlistModule } from './watchlist/watchlist.module';
+import { PrismaErrorsFilter } from './common/prisma-errors.filter';
 
 @Module({
   imports: [
@@ -60,6 +61,7 @@ import { WatchlistModule } from './watchlist/watchlist.module';
     AdminModule,
   ],
   providers: [
+    { provide: APP_FILTER, useClass: PrismaErrorsFilter },
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: CsrfGuard },

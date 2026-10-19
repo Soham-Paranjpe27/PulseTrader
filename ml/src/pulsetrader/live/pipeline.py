@@ -19,6 +19,7 @@ import logging
 import time
 import urllib.error
 import urllib.request
+from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -102,15 +103,29 @@ class JsonlSink:
 
 @dataclass
 class ApiSink:
-    """POSTs to the API's ingestion endpoints (token in `x-ingest-token`, from LIVE_INGEST_TOKEN)."""
+    """POSTs to the API's ingestion endpoints (token in `x-ingest-token`, from LIVE_INGEST_TOKEN).
+
+    When the API is unreachable or answers 5xx/429, requests wait in an ordered queue (predictions stay
+    ahead of their outcomes) and are retried with exponential backoff, so a short API outage loses
+    nothing. The queue is bounded (`max_pending` requests); beyond it the oldest request is dropped and
+    counted. A 4xx answer means the request itself is wrong: it is logged and not retried.
+    """
 
     base_url: str
     token: str
     timeout: float = 10.0
+    max_pending: int = 5000
+    max_backoff: float = 60.0
     failures: int = 0
     sent: int = 0
+    rejected: int = 0
+    dropped: int = 0
+    pending: deque[tuple[str, dict[str, Any]]] = field(default_factory=deque)
+    backoff: float = 0.0
+    retry_at: float = 0.0
 
-    def _post(self, path: str, body: dict[str, Any]) -> None:
+    def _send(self, path: str, body: dict[str, Any]) -> bool:
+        """True when the request is done with (stored, or rejected as invalid); False to retry."""
         req = urllib.request.Request(
             f"{self.base_url.rstrip('/')}{path}",
             data=json.dumps(body, default=str).encode(),
@@ -120,10 +135,52 @@ class ApiSink:
         try:
             with urllib.request.urlopen(req, timeout=self.timeout) as r:  # noqa: S310 (configured API URL)
                 r.read()
-            self.sent += 1
+        except urllib.error.HTTPError as e:
+            if e.code < 500 and e.code != 429:
+                self.rejected += 1
+                log.error("API sink %s rejected (HTTP %d): %s", path, e.code, e.read()[:300])
+                return True
+            self.failures += 1
+            log.warning("API sink %s failed (HTTP %d); queued for retry", path, e.code)
+            return False
         except (urllib.error.URLError, OSError, TimeoutError) as e:
             self.failures += 1
-            log.warning("API sink %s failed: %s", path, e)
+            log.warning("API sink %s failed (%s); queued for retry", path, e)
+            return False
+        self.sent += 1
+        return True
+
+    def _failed(self) -> None:
+        self.backoff = min(self.max_backoff, max(1.0, self.backoff * 2))
+        self.retry_at = time.monotonic() + self.backoff
+
+    def flush(self) -> bool:
+        """Send queued requests in order; stops at the first failure. True when the queue is empty."""
+        while self.pending:
+            if time.monotonic() < self.retry_at:
+                return False
+            if not self._send(*self.pending[0]):
+                self._failed()
+                return False
+            self.pending.popleft()
+            self.backoff = 0.0
+        return True
+
+    def _post(self, path: str, body: dict[str, Any]) -> None:
+        if self.flush() and time.monotonic() >= self.retry_at:
+            if self._send(path, body):
+                self.backoff = 0.0
+                return
+            self._failed()
+        self.pending.append((path, body))
+        if len(self.pending) > self.max_pending:
+            self.pending.popleft()
+            self.dropped += 1
+            log.error("API sink queue full (%d requests); dropped the oldest", self.max_pending)
+
+    def stats(self) -> dict[str, int]:
+        return {"sent": self.sent, "failures": self.failures, "rejected": self.rejected,
+                "pending": len(self.pending), "dropped": self.dropped}  # fmt: skip
 
     def predictions(self, preds: list[dict[str, Any]]) -> None:
         for i in range(0, len(preds), 50):  # stays under the API body limit (100 kB)
@@ -319,8 +376,17 @@ class LivePipeline:
         self.resolve_outcomes(final=True)  # stream ended: no later bar can arrive
         self.check_drift(None)
         self.publish_status(self._last_now or datetime.now().astimezone())
+        sinks = {}
+        for sink in self.sinks:
+            if isinstance(sink, ApiSink):
+                for _ in range(5):  # last chance for requests queued during an API outage
+                    if sink.flush():
+                        break
+                    await asyncio.sleep(max(0.0, sink.retry_at - time.monotonic()))
+                sinks["api"] = sink.stats()
         fsec = self.stats["feature_seconds"]
         return {
+            **({"sinks": sinks} if sinks else {}),
             **{k: v for k, v in self.stats.items() if k != "feature_seconds"},
             "bars": n,
             "accepted": self.validator.accepted,

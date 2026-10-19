@@ -30,7 +30,7 @@ from pulsetrader.config import BAR_MINUTES
 from pulsetrader.eval.calibration import calibrator_from_json
 from pulsetrader.eval.multiclass import CLASSES, DOWN, NEUTRAL, UP
 from pulsetrader.features.preprocess import Preprocessor
-from pulsetrader.registry.registry import ModelRecord, Registry, Status
+from pulsetrader.registry.registry import ModelRecord, Registry, Status, verify_digests
 
 SERVABLE = (Status.PRODUCTION, Status.SHADOW, Status.CANDIDATE)
 
@@ -175,6 +175,9 @@ def load_model(registry: Registry, rec: ModelRecord) -> LoadedModel:
               "serving.json"):  # fmt: skip
         if not (art / f).exists():
             raise ModelUnavailable(f"{rec.key}: artifact file {f} missing in {art}")
+    bad = verify_digests(art)
+    if bad:
+        raise ModelUnavailable(f"{rec.key}: artifact integrity check failed ({', '.join(bad)})")
     feats = json.loads((art / "features.json").read_text())
     symbols = art / "symbols.json"
     return LoadedModel(

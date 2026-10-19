@@ -18,6 +18,7 @@ ever promoted automatically.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import tempfile
@@ -218,6 +219,37 @@ class Registry:
         rec.status = target.value
         self._save(ms)
         return rec
+
+
+DIGEST_FILE = "sha256.json"
+
+
+def artifact_digests(art: Path) -> dict[str, str]:
+    """SHA-256 of every file in an artifact directory (except the digest file itself)."""
+    return {
+        p.name: hashlib.sha256(p.read_bytes()).hexdigest()
+        for p in sorted(art.iterdir())
+        if p.is_file() and p.name != DIGEST_FILE
+    }
+
+
+def write_digests(art: Path) -> dict[str, str]:
+    d = artifact_digests(art)
+    (art / DIGEST_FILE).write_text(json.dumps(d, indent=1, sort_keys=True))
+    return d
+
+
+def verify_digests(art: Path) -> list[str]:
+    """Problems with an artifact against its recorded digests; [] when intact or never recorded."""
+    f = art / DIGEST_FILE
+    if not f.exists():
+        return []
+    want: dict[str, str] = json.loads(f.read_text())
+    have = artifact_digests(art)
+    bad = [f"{n} changed" for n in want if n in have and have[n] != want[n]]
+    bad += [f"{n} missing" for n in want if n not in have]
+    bad += [f"{n} not recorded" for n in have if n not in want]
+    return bad
 
 
 def _find(ms: list[ModelRecord], model_id: str, version: int) -> ModelRecord:

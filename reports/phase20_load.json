@@ -1,0 +1,271 @@
+{
+ "note": "Closed loop, 15 s per level; API at http://localhost:3002 with the per-IP rate limit raised for this measurement; load generator on the same 4-CPU machine as API, ML service, PostgreSQL and Redis. Errors = non-2xx or transport errors.",
+ "scenarios": [
+  {
+   "name": "API GET /stocks?q (search)",
+   "levels": [
+    {
+     "concurrency": 1,
+     "requests": 3224,
+     "rps": 214.9,
+     "p50_ms": 4.353471000285936,
+     "p95_ms": 6.862116000775131,
+     "p99_ms": 9.924806000526587,
+     "max_ms": 60.567552000065916,
+     "errors": {},
+     "error_rate": 0.0
+    },
+    {
+     "concurrency": 8,
+     "requests": 9005,
+     "rps": 599.7,
+     "p50_ms": 12.703401999715425,
+     "p95_ms": 21.127828999851772,
+     "p99_ms": 27.878054000211705,
+     "max_ms": 68.714261000423,
+     "errors": {},
+     "error_rate": 0.0
+    },
+    {
+     "concurrency": 32,
+     "requests": 9286,
+     "rps": 618.0,
+     "p50_ms": 50.471001000005344,
+     "p95_ms": 70.3812250003466,
+     "p99_ms": 83.81113500036008,
+     "max_ms": 355.33103099987784,
+     "errors": {},
+     "error_rate": 0.0
+    }
+   ]
+  },
+  {
+   "name": "API GET /stocks/:symbol (quote, latest prediction)",
+   "levels": [
+    {
+     "concurrency": 1,
+     "requests": 1280,
+     "rps": 85.3,
+     "p50_ms": 11.311424999803421,
+     "p95_ms": 15.748106000501139,
+     "p99_ms": 19.291200000225217,
+     "max_ms": 30.753560999983165,
+     "errors": {},
+     "error_rate": 0.0
+    },
+    {
+     "concurrency": 8,
+     "requests": 4970,
+     "rps": 331.1,
+     "p50_ms": 23.679424999500043,
+     "p95_ms": 33.68191900062811,
+     "p99_ms": 40.22633900058281,
+     "max_ms": 62.465850000080536,
+     "errors": {},
+     "error_rate": 0.0
+    },
+    {
+     "concurrency": 32,
+     "requests": 5825,
+     "rps": 386.9,
+     "p50_ms": 80.88774600037141,
+     "p95_ms": 110.15946099996654,
+     "p99_ms": 124.67743499928474,
+     "max_ms": 151.82271000048786,
+     "errors": {},
+     "error_rate": 0.0
+    }
+   ]
+  },
+  {
+   "name": "API GET /market-data/:symbol/daily (1y bars)",
+   "levels": [
+    {
+     "concurrency": 1,
+     "requests": 1278,
+     "rps": 85.1,
+     "p50_ms": 11.419995999858656,
+     "p95_ms": 15.581628999825625,
+     "p99_ms": 18.535438000071736,
+     "max_ms": 33.72244799993496,
+     "errors": {},
+     "error_rate": 0.0
+    },
+    {
+     "concurrency": 8,
+     "requests": 3737,
+     "rps": 248.7,
+     "p50_ms": 31.39630700025009,
+     "p95_ms": 47.44342400044843,
+     "p99_ms": 56.31514300057461,
+     "max_ms": 77.19716100018559,
+     "errors": {},
+     "error_rate": 0.0
+    },
+    {
+     "concurrency": 32,
+     "requests": 4396,
+     "rps": 291.3,
+     "p50_ms": 107.03792599997541,
+     "p95_ms": 149.62221099995077,
+     "p99_ms": 175.74759399940376,
+     "max_ms": 245.34306200075662,
+     "errors": {},
+     "error_rate": 0.0
+    }
+   ]
+  },
+  {
+   "name": "API GET /predictions/accuracy?mode=REPLAY (20k outcomes)",
+   "levels": [
+    {
+     "concurrency": 1,
+     "requests": 10710,
+     "rps": 713.9,
+     "p50_ms": 1.1804929999925662,
+     "p95_ms": 2.362936000281479,
+     "p99_ms": 4.1350120000061,
+     "max_ms": 485.29884399977163,
+     "errors": {},
+     "error_rate": 0.0
+    },
+    {
+     "concurrency": 8,
+     "requests": 10368,
+     "rps": 675.2,
+     "p50_ms": 9.933499999533524,
+     "p95_ms": 20.75393700033601,
+     "p99_ms": 29.61035600037576,
+     "max_ms": 434.5136249994539,
+     "errors": {},
+     "error_rate": 0.0
+    },
+    {
+     "concurrency": 32,
+     "requests": 8647,
+     "rps": 574.5,
+     "p50_ms": 51.38284099939483,
+     "p95_ms": 82.52778999940347,
+     "p99_ms": 119.49322999953438,
+     "max_ms": 690.9250779999638,
+     "errors": {},
+     "error_rate": 0.0
+    }
+   ]
+  },
+  {
+   "name": "API GET /monitoring (health summary)",
+   "levels": [
+    {
+     "concurrency": 1,
+     "requests": 255,
+     "rps": 16.9,
+     "p50_ms": 55.368905999785056,
+     "p95_ms": 82.42601699930674,
+     "p99_ms": 93.23340700029803,
+     "max_ms": 131.2749549997534,
+     "errors": {},
+     "error_rate": 0.0
+    },
+    {
+     "concurrency": 8,
+     "requests": 3963,
+     "rps": 263.7,
+     "p50_ms": 20.071846000064397,
+     "p95_ms": 69.07119599964062,
+     "p99_ms": 140.6771480005773,
+     "max_ms": 203.65782699991541,
+     "errors": {},
+     "error_rate": 0.0
+    },
+    {
+     "concurrency": 32,
+     "requests": 5155,
+     "rps": 342.1,
+     "p50_ms": 84.25867200003267,
+     "p95_ms": 132.01457899958768,
+     "p99_ms": 204.30687499992928,
+     "max_ms": 731.4979850007148,
+     "errors": {},
+     "error_rate": 0.0
+    }
+   ]
+  },
+  {
+   "name": "API POST /predictions (historical, via ML, stored)",
+   "levels": [
+    {
+     "concurrency": 1,
+     "requests": 552,
+     "rps": 36.7,
+     "p50_ms": 26.033825000013167,
+     "p95_ms": 34.099503999641456,
+     "p99_ms": 41.956064000260085,
+     "max_ms": 203.47727599983045,
+     "errors": {},
+     "error_rate": 0.0
+    },
+    {
+     "concurrency": 8,
+     "requests": 2071,
+     "rps": 137.7,
+     "p50_ms": 57.18201600029715,
+     "p95_ms": 81.19568200072536,
+     "p99_ms": 97.10681099932117,
+     "max_ms": 133.71130199993786,
+     "errors": {},
+     "error_rate": 0.0
+    },
+    {
+     "concurrency": 32,
+     "requests": 2624,
+     "rps": 173.5,
+     "p50_ms": 178.0420149998463,
+     "p95_ms": 259.7549349993642,
+     "p99_ms": 308.0810550000024,
+     "max_ms": 661.666659999355,
+     "errors": {},
+     "error_rate": 0.0
+    }
+   ]
+  },
+  {
+   "name": "ML POST /predict (historical features)",
+   "levels": [
+    {
+     "concurrency": 1,
+     "requests": 2133,
+     "rps": 142.2,
+     "p50_ms": 6.804286000260618,
+     "p95_ms": 9.034888000314822,
+     "p99_ms": 11.56056499985425,
+     "max_ms": 20.0408549999338,
+     "errors": {},
+     "error_rate": 0.0
+    },
+    {
+     "concurrency": 8,
+     "requests": 3544,
+     "rps": 236.1,
+     "p50_ms": 32.83257099974435,
+     "p95_ms": 48.49772400029906,
+     "p99_ms": 55.90330399991217,
+     "max_ms": 76.70710899947153,
+     "errors": {},
+     "error_rate": 0.0
+    },
+    {
+     "concurrency": 32,
+     "requests": 5184,
+     "rps": 344.6,
+     "p50_ms": 91.81585100031953,
+     "p95_ms": 116.97830399953091,
+     "p99_ms": 142.51177700043627,
+     "max_ms": 215.91217099921778,
+     "errors": {},
+     "error_rate": 0.0
+    }
+   ]
+  }
+ ]
+}

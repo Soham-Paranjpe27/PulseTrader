@@ -9,6 +9,7 @@ import { performance } from './performance';
 import { CreatePredictionDto } from './predictions.dto';
 
 const PERFORMANCE_ROWS = 20_000;
+const ACCURACY_CACHE_MS = Number(process.env.ACCURACY_CACHE_SECONDS ?? 15) * 1000;
 
 interface PerfRow {
   ts: Date;
@@ -39,12 +40,20 @@ export class PredictionsService {
   private readonly log = new Logger(PredictionsService.name);
   private readonly local = new Subject<Prediction>();
 
+  // accuracy results per (symbol, model, mode): recomputing over 20k outcomes costs ~0.3-1 s, and the
+  // numbers only change when predictions or outcomes are written, which clears the cache
+  private readonly accuracyCache = new Map<string, { at: number; value: Promise<AccuracyResult> }>();
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly ml: MlClient,
     private readonly models: ModelsService,
     private readonly redis: RedisService,
   ) {}
+
+  private invalidateAccuracy() {
+    this.accuracyCache.clear();
+  }
 
   async create(input: CreatePredictionDto[], userId: string): Promise<Prediction[]> {
     const items = input.map((i) => ({ ...i, symbol: i.symbol.toUpperCase() }));
@@ -76,6 +85,7 @@ export class PredictionsService {
       saved.push(row);
       if (!(await this.redis.publish('predictions', row))) this.local.next(row);
     }
+    this.invalidateAccuracy();
     return saved;
   }
 
@@ -96,6 +106,7 @@ export class PredictionsService {
       rows.push(toRow(p, mv, null, mode));
     }
     const { count } = await this.prisma.prediction.createMany({ data: rows, skipDuplicates: true });
+    this.invalidateAccuracy();
     for (const row of rows) {
       const out = { ...row, createdAt: new Date() } as unknown as Prediction;
       if (!(await this.redis.publish('predictions', out))) this.local.next(out);
@@ -165,10 +176,25 @@ export class PredictionsService {
         });
       }),
     );
+    this.invalidateAccuracy();
     return { stored: rows.length, unknown: outs.length - rows.length };
   }
 
-  async accuracy(symbol?: string, modelVersionId?: string, mode?: string) {
+  accuracy(symbol?: string, modelVersionId?: string, mode?: string): Promise<AccuracyResult> {
+    const key = `${symbol ?? ''}|${modelVersionId ?? ''}|${mode ?? ''}`;
+    const now = Date.now();
+    const hit = this.accuracyCache.get(key);
+    if (hit && now - hit.at < ACCURACY_CACHE_MS) return hit.value;
+    for (const [k, v] of this.accuracyCache)
+      if (now - v.at >= ACCURACY_CACHE_MS) this.accuracyCache.delete(k);
+    const value = this.computeAccuracy(symbol, modelVersionId, mode);
+    this.accuracyCache.set(key, { at: now, value });
+    // a failed computation is not cached; the caller still receives the rejection
+    value.then(undefined, () => this.accuracyCache.delete(key));
+    return value;
+  }
+
+  private async computeAccuracy(symbol?: string, modelVersionId?: string, mode?: string) {
     const where: Prisma.PredictionWhereInput = {
       ...(symbol ? { symbol } : {}),
       ...(modelVersionId ? { modelVersionId } : {}),
@@ -271,3 +297,5 @@ function toRow(
     requestedById: userId,
   };
 }
+
+export type AccuracyResult = Awaited<ReturnType<PredictionsService['computeAccuracy']>>;

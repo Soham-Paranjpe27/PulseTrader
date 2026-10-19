@@ -1,0 +1,116 @@
+{
+ "artifacts": [
+  {
+   "model": "lightgbm-y_1m_5bp-tuned@v1",
+   "files": 7,
+   "recorded_now": true,
+   "problems": [],
+   "passed": true
+  },
+  {
+   "model": "lightgbm-y_5m_10bp-tuned@v1",
+   "files": 7,
+   "recorded_now": true,
+   "problems": [],
+   "passed": true
+  }
+ ],
+ "features": {
+  "symbols": [
+   {
+    "symbol": "BHEL",
+    "recomputed_rows": 63399,
+    "stored_rows": 63399,
+    "matched_rows": 63399,
+    "columns": 110,
+    "mismatched_values": {},
+    "passed": true
+   },
+   {
+    "symbol": "FEDERALBNK",
+    "recomputed_rows": 63399,
+    "stored_rows": 63399,
+    "matched_rows": 63399,
+    "columns": 110,
+    "mismatched_values": {},
+    "passed": true
+   },
+   {
+    "symbol": "TCS",
+    "recomputed_rows": 63473,
+    "stored_rows": 63473,
+    "matched_rows": 63473,
+    "columns": 110,
+    "mismatched_values": {},
+    "passed": true
+   },
+   {
+    "symbol": "TECHM",
+    "recomputed_rows": 63473,
+    "stored_rows": 63473,
+    "matched_rows": 63473,
+    "columns": 110,
+    "mismatched_values": {},
+    "passed": true
+   },
+   {
+    "symbol": "UNITDSPR",
+    "recomputed_rows": 63472,
+    "stored_rows": 63472,
+    "matched_rows": 63472,
+    "columns": 110,
+    "mismatched_values": {},
+    "passed": true
+   },
+   {
+    "symbol": "YESBANK",
+    "recomputed_rows": 63399,
+    "stored_rows": 63399,
+    "matched_rows": 63399,
+    "columns": 110,
+    "mismatched_values": {},
+    "passed": true
+   }
+  ],
+  "compared_before": "2025-06-16",
+  "seed": 20,
+  "passed": true
+ },
+ "refit": [
+  {
+   "model": "lightgbm-y_1m_5bp-tuned@v1",
+   "seconds": 230.1,
+   "prediction_gate": {
+    "status": "PASSED",
+    "evidence": "refit reproduces 1,116,225/1,116,225 stored validation predictions, max abs diff 2.98e-08 (tol 0.0001); saved model reload diff 0.0e+00"
+   },
+   "best_iteration": 149,
+   "registry_best_iteration": 149,
+   "identical_files": {
+    "model.txt": true,
+    "preprocessor.json": true,
+    "features.json": true,
+    "calibrator.json": true
+   },
+   "passed": true
+  },
+  {
+   "model": "lightgbm-y_5m_10bp-tuned@v1",
+   "seconds": 189.2,
+   "prediction_gate": {
+    "status": "PASSED",
+    "evidence": "refit reproduces 1,101,326/1,101,326 stored validation predictions, max abs diff 2.98e-08 (tol 0.0001); saved model reload diff 0.0e+00"
+   },
+   "best_iteration": 323,
+   "registry_best_iteration": 323,
+   "identical_files": {
+    "model.txt": true,
+    "preprocessor.json": true,
+    "features.json": true,
+    "calibrator.json": true
+   },
+   "passed": true
+  }
+ ],
+ "passed": true
+}

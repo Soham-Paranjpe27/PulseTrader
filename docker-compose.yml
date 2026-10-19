@@ -43,7 +43,10 @@ services:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
       ml-service: { condition: service_started }
-    ports: ["3001:3001"]
+    # Not published: the API trusts one proxy hop (TRUST_PROXY=1) for client addresses, so it must only
+    # be reachable through the web app's /api proxy (and the live pipeline on the internal network).
+    # Swagger: http://localhost:3000/api/docs.
+    expose: ["3001"]
   # Live pipeline (Phase 17). Not started by default: `docker compose --profile live up live-pipeline`.
   # MARKET_DATA_PROVIDER=kite needs a Kite Connect key + today's access token and network access to
   # api.kite.trade / ws.kite.trade. Without them use replay (LIVE_REPLAY_DATE, recorded data, shown as REPLAY).

@@ -74,28 +74,36 @@ export class PortfolioService {
   }
 
   async trade(userId: string, id: string, dto: TradeDto) {
-    const p = await this.own(userId, id);
+    await this.own(userId, id);
     const symbol = dto.symbol.toUpperCase();
     const bar = await this.lastClose(symbol);
     if (!bar) throw new NotFoundException({ code: 'DATA_UNAVAILABLE', message: `no price for ${symbol}` });
-    const held = p.positions.find((x) => x.symbol === symbol) ?? null;
-    let r;
-    try {
-      r = applyTrade(p.cash, held, dto.side, dto.quantity, bar.close);
-    } catch (e) {
-      throw new BadRequestException((e as Error).message);
-    }
-    await this.prisma.$transaction(async (tx) => {
-      await tx.portfolio.update({ where: { id }, data: { cash: r.cash } });
-      if (r.holding) {
+    // Read and write under a row lock on the portfolio: concurrent trades on the same portfolio run one
+    // after another, so none is lost and a position cannot be sold twice.
+    const r = await this.prisma.$transaction(async (tx) => {
+      const locked = await tx.$queryRaw<{ cash: number }[]>`
+        SELECT cash FROM "Portfolio" WHERE id = ${id} AND "userId" = ${userId} FOR UPDATE`;
+      if (!locked.length) throw new NotFoundException('portfolio not found');
+      const held = await tx.portfolioPosition.findUnique({
+        where: { portfolioId_symbol: { portfolioId: id, symbol } },
+      });
+      let res;
+      try {
+        res = applyTrade(locked[0].cash, held, dto.side, dto.quantity, bar.close);
+      } catch (e) {
+        throw new BadRequestException((e as Error).message);
+      }
+      await tx.portfolio.update({ where: { id }, data: { cash: res.cash } });
+      if (res.holding) {
         await tx.portfolioPosition.upsert({
           where: { portfolioId_symbol: { portfolioId: id, symbol } },
-          create: { portfolioId: id, symbol, quantity: r.holding.quantity, avgPrice: r.holding.avgPrice },
-          update: { quantity: r.holding.quantity, avgPrice: r.holding.avgPrice },
+          create: { portfolioId: id, symbol, quantity: res.holding.quantity, avgPrice: res.holding.avgPrice },
+          update: { quantity: res.holding.quantity, avgPrice: res.holding.avgPrice },
         });
       } else {
         await tx.portfolioPosition.deleteMany({ where: { portfolioId: id, symbol } });
       }
+      return res;
     });
     await this.audit.record('portfolio.trade', {
       userId,

@@ -1,21 +1,23 @@
 # knowledge.md — PulseTrader V4 project state
 
-Last updated: 2026-10-19 (phase 19 done).
+Last updated: 2026-10-19 (phase 20 done).
 
 ## Current phase
-Phases 0–19 DONE on real data (Phase 19 finished 2026-10-19). Next: Phase 20 (production hardening).
+All 20 phases DONE on real data (Phase 20 finished 2026-10-19). Nothing is tradeable; no PRODUCTION model.
 
 ## Next exact action
-1. Phase 20 (production hardening, spec phase 20): security testing, load testing, failure testing
-   (ML/Redis/DB/feed down -> alerts and graceful errors), database testing, ML reproducibility, Docker
-   validation, CI/CD validation. Real LIVE still needs the user's Kite Connect key/secret + daily access
-   token and network access to api.kite.trade / ws.kite.trade (both blocked here). Local stack:
-   `service postgresql start; redis-server --daemonize yes`; ML :8000, API :3001
-   (`AUTH_RATE_LIMIT_PER_MINUTE=40 TRUST_PROXY=1 LIVE_INGEST_TOKEN=... node dist/main.js`), web :3000
-   (docs/frontend.md), replay: docs/live-data.md, monitoring: docs/monitoring.md.
-2. If the container was recycled, data/ is gone: torch needs `pip install torch --index-url
-   https://download.pytorch.org/whl/cpu`, then `pulsetrader fetch`, `pipeline`, `security`, `dataset`
-   (~35 min), then `pulsetrader optimize --steps W` / `T` to recreate Phase 9 predictions.
+All spec phases are done. Remaining items need the user:
+1. Final test period 2025-06-16..2026-01-21: run once on both frozen CANDIDATE models (decision card in
+   the resumed thread) or keep untouched. Until then the registry gate `test_passed` is NOT_RUN and
+   docs/model-card.md + docs/final-audit.md say NOT_RUN. If run, it is run exactly once; record results
+   and never tune on them.
+2. Real LIVE: Kite Connect key, secret, daily access token, plus network access to api.kite.trade and
+   ws.kite.trade (both blocked here). Then a shadow evaluation (`shadow_passed` gate).
+3. Local stack if the container was recycled: `service postgresql start; redis-server --daemonize yes`;
+   ML :8000, API :3001 (`AUTH_RATE_LIMIT_PER_MINUTE=40 TRUST_PROXY=1 LIVE_INGEST_TOKEN=... node dist/main.js`),
+   web :3000 (`node -r ./xff-guard.cjs server.js` in web/.next/standalone, docs/frontend.md).
+   If data/ is gone: torch CPU wheel, then `pulsetrader fetch`, `pipeline`, `security`, `dataset` (~35 min),
+   `pulsetrader optimize --steps W` / `T` to recreate Phase 9 predictions.
 
 ## Environment
 4 CPU, ~15 GB RAM, ~252 GB disk but ~12 GB free after data, no GPU. Python 3.13 venv in ml/.venv.
@@ -252,6 +254,21 @@ optional SL/TP, 10 positions x 10% equity, one per symbol, Indian intraday charg
   Web: /monitoring page. Drift never replaces a model.
 - Tests: ML 101, API 29 unit + 14 e2e, web 13 unit + 13 e2e.
 
+## Phase 20 results (DONE 2026-10-19) — reports/phase20_hardening.md, docs/{deployment,troubleshooting,architecture,model-card,final-audit}.md
+- Fixed: XFF spoofing through the web proxy (web/xff-guard.cjs, WEB_TRUSTED_PROXY_HOPS); compose no longer
+  publishes API 3001; paper trades row-locked (lost updates/oversell); Prisma errors mapped 409/404/503
+  (no 500 on duplicates or DB outage); ApiSink retry queue (no data loss while API down); accuracy endpoint
+  cache (ACCURACY_CACHE_SECONDS) + index 4.6 -> 575 req/s at c=32; nonce CSP (web/src/middleware.ts);
+  sha256.json per artifact enforced by the ML service; monitoring callers share the in-flight check.
+- Evidence: security 52/52 (scripts/hardening/security_check.py), npm/pip audit 0, gitleaks 0; load 0
+  errors at c=1/8/32 (load_test.py, reports/phase20_load.md); failure 22/22 (failure_test.py); API killed
+  mid-REPLAY: 15,000/15,000 stored; pg_dump/restore 14 s each, counts + md5 equal; refit byte-identical,
+  dataset rebuild exact (`pulsetrader repro`, reports/phase20_repro.md).
+- Docker image builds cannot run here (Debian mirrors blocked; routing builds via the agent proxy was
+  denied). CI docker job builds images and runs scripts/hardening/compose_smoke.sh; new CI security job
+  (gitleaks, actionlint) and prisma migrate diff drift check.
+- Tests: ML 103, API 31 unit + 16 e2e, web 16 unit + 14 e2e.
+
 ## Architecture
 - `ml/src/pulsetrader/`: config, data/{schema,validate,io,discovery,pipeline},
   security/{lists,master}, features/{engine,preprocess}, labels/labels, splits/splits, eval/metrics,
@@ -305,7 +322,7 @@ optional SL/TP, 10 positions x 10% equity, one per symbol, Indian intraday charg
 | 17 Live market system | DONE 2026-10-19: Kite adapter + replay; live features/predictions match research exactly |
 | 18 Live paper evaluation | DONE 2026-10-19: REPLAY of 20 validation sessions; outcomes match labels exactly; gated calls 40-43% accurate, lose after costs |
 | 19 Monitoring | DONE 2026-10-19: drift (feature, prediction, accuracy, calibration, regime) with calibrated thresholds, health, latency, alerts; Jan 2025 flagged as drift |
-| 20 | NOT STARTED |
+| 20 Production hardening | DONE 2026-10-19: 6 issues fixed; security 52/52, failure 22/22, load 0 errors, byte-identical refit, backup/restore exact; reports/phase20_hardening.md |
 
 ## Known issues
 - No Kite Connect credentials yet and api.kite.trade / ws.kite.trade are blocked by this environment's
@@ -315,4 +332,4 @@ optional SL/TP, 10 positions x 10% equity, one per symbol, Indian intraday charg
 
 ## Commands
 See AGENTS.md. From ml/: `PULSETRADER_DATA_DIR=../data .venv/bin/pulsetrader {fetch,discover,pipeline,security,dataset,audit,classical,deep,optimize,calibrate,robustness,live,live-parity,live-eval,monitor}`.
-Tests: `.venv/bin/pytest` (101 passed on 2026-10-19). api/: `npm test`, `npm run test:e2e`. web/: `npm test`, `npm run test:e2e` (docs/frontend.md).
+Tests: `.venv/bin/pytest` (103 passed on 2026-10-19). api/: `npm test`, `npm run test:e2e`. web/: `npm test`, `npm run test:e2e` (docs/frontend.md).

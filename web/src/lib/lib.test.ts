@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { ApiError, qs, readCookie, toApiError } from './api';
+import { buildCsp } from './csp';
 import { dailyCandles, IST_OFFSET_SECONDS, lookbackStart, minuteCandles } from './chart';
 import { codeLabel, compact, day, inr, istTime, num, pct } from './format';
 import { buildUpstreamUrl, forwardRequestHeaders, forwardResponseHeaders } from './proxy';
@@ -151,5 +152,15 @@ test.describe('format', () => {
     expect(compact(1.82e10)).toBe('1820.00 Cr');
     expect(istTime('2025-01-06T05:00:00.000Z')).toBe('06 Jan 2025, 10:30 IST');
     expect(codeLabel('TEST_PERIOD_LOCKED')).toBe('Test period locked');
+  });
+});
+
+test.describe('csp', () => {
+  test('scripts need the nonce; no inline or eval outside development', () => {
+    const p = buildCsp('abc');
+    expect(p).toContain("script-src 'self' 'nonce-abc' 'strict-dynamic'");
+    expect(p).not.toMatch(/script-src[^;]*'unsafe-(inline|eval)'/);
+    expect(p).toContain("frame-ancestors 'none'");
+    expect(buildCsp('abc', true)).toContain("'unsafe-eval'");
   });
 });

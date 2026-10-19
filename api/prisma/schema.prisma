@@ -208,6 +208,7 @@ model Prediction {
 
   @@index([symbol, predictionTimestamp])
   @@index([modelVersionId, predictionTimestamp])
+  @@index([mode, marketDataTimestamp])
 }
 
 model PredictionOutcome {

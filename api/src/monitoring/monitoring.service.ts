@@ -68,7 +68,7 @@ type Check = { severity: AlertSeverity; message: string; details?: object } | nu
 export class MonitoringService implements OnModuleInit, OnModuleDestroy {
   private readonly log = new Logger(MonitoringService.name);
   private timer: NodeJS.Timeout | null = null;
-  private running = false;
+  private inflight: ReturnType<MonitoringService['runCheck']> | null = null;
   private last: Record<string, unknown> | null = null;
 
   constructor(
@@ -217,38 +217,47 @@ export class MonitoringService implements OnModuleInit, OnModuleDestroy {
   }
 
   // --- health checks ------------------------------------------------------------------------------
-  /** Runs every check once, updates alerts, and returns the component states. */
-  async check() {
-    if (this.running) return this.last;
-    this.running = true;
+  /**
+   * Runs every check once, updates alerts, and returns the component states. Callers that arrive while
+   * a check is running share its result instead of getting the previous (stale) one.
+   */
+  check() {
+    if (!this.inflight) {
+      this.inflight = this.runCheck().finally(() => {
+        this.inflight = null;
+      });
+    }
+    return this.inflight;
+  }
+
+  private async runCheck() {
+    let database = false;
     try {
-      let database = false;
-      try {
-        await this.prisma.$queryRaw`SELECT 1`;
-        database = true;
-      } catch (e) {
-        this.log.error(`database check failed: ${(e as Error).message}`);
-      }
-      const redis = await this.redis.ping();
-      const t0 = Date.now();
-      let ml: Record<string, unknown> = { reachable: false };
-      try {
-        const ready = await this.ml.ready();
-        ml = { reachable: true, responseMs: Date.now() - t0, ready };
-        ml.metrics = await this.ml.metrics();
-      } catch (e) {
-        ml = { ...ml, error: (e as Error).message };
-      }
-      const feed = await this.live.status();
-      const provider = process.env.MARKET_DATA_PROVIDER || null;
-      const open = marketOpen();
-      const api = this.latency.summary();
-      const mlP95 = (ml.metrics as { request_latency_ms?: { p95?: number | null } } | undefined)
-        ?.request_latency_ms?.p95;
-      const apiLimit = envNum('API_LATENCY_P95_MS', 1000);
-      const mlLimit = envNum('ML_LATENCY_P95_MS', 500);
-      if (database) {
-        await this.apply([
+      await this.prisma.$queryRaw`SELECT 1`;
+      database = true;
+    } catch (e) {
+      this.log.error(`database check failed: ${(e as Error).message}`);
+    }
+    const redis = await this.redis.ping();
+    const t0 = Date.now();
+    let ml: Record<string, unknown> = { reachable: false };
+    try {
+      const ready = await this.ml.ready();
+      ml = { reachable: true, responseMs: Date.now() - t0, ready };
+      ml.metrics = await this.ml.metrics();
+    } catch (e) {
+      ml = { ...ml, error: (e as Error).message };
+    }
+    const feed = await this.live.status();
+    const provider = process.env.MARKET_DATA_PROVIDER || null;
+    const open = marketOpen();
+    const api = this.latency.summary();
+    const mlP95 = (ml.metrics as { request_latency_ms?: { p95?: number | null } } | undefined)
+      ?.request_latency_ms?.p95;
+    const apiLimit = envNum('API_LATENCY_P95_MS', 1000);
+    const mlLimit = envNum('ML_LATENCY_P95_MS', 500);
+    if (database) {
+      await this.apply([
           {
             kind: 'ML_SERVICE_DOWN',
             key: 'ml-service',
@@ -289,20 +298,17 @@ export class MonitoringService implements OnModuleInit, OnModuleDestroy {
                 : null,
           },
         ]); // prettier-ignore
-      }
-      this.last = {
-        checkedAt: new Date().toISOString(),
-        database,
-        redis,
-        mlService: ml,
-        marketData: { ...feed, providerConfigured: provider, marketOpen: open },
-        api,
-        thresholds: { apiLatencyP95Ms: apiLimit, mlLatencyP95Ms: mlLimit },
-      };
-      return this.last;
-    } finally {
-      this.running = false;
     }
+    this.last = {
+      checkedAt: new Date().toISOString(),
+      database,
+      redis,
+      mlService: ml,
+      marketData: { ...feed, providerConfigured: provider, marketOpen: open },
+      api,
+      thresholds: { apiLatencyP95Ms: apiLimit, mlLatencyP95Ms: mlLimit },
+    };
+    return this.last;
   }
 
   async summary() {

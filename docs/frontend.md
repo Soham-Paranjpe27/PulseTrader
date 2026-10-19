@@ -58,7 +58,7 @@ service postgresql start; redis-server --daemonize yes
 cd ml && PULSETRADER_DATA_DIR=../data .venv/bin/uvicorn pulsetrader.serve.app:app --port 8000 &
 cd api && npm run build && TRUST_PROXY=1 node dist/main.js &            # :3001
 cd web && npm ci && npm run build
-cp -r .next/static .next/standalone/.next/ && API_URL=http://localhost:3001 node .next/standalone/server.js   # :3000
+cp -r .next/static .next/standalone/.next/ && API_URL=http://localhost:3001 node -r ./xff-guard.cjs .next/standalone/server.js   # :3000
 ```
 Dev server: `API_URL=http://localhost:3001 npm run dev`.
 

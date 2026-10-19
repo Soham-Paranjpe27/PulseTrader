@@ -318,6 +318,21 @@ def cmd_monitor(args: argparse.Namespace) -> None:
                 print(mres["model"], w["window"]["label"], w["status"], w["reasons"])
 
 
+def cmd_repro(args: argparse.Namespace) -> None:
+    """Phase 20: artifact integrity, dataset rebuild from canonical bars, model refit."""
+    from pulsetrader.experiments.repro import render, run
+
+    p = data_paths()
+    res = run(p.root, args.name, args.symbols, args.seed)
+    reports = Path(args.reports)
+    reports.mkdir(parents=True, exist_ok=True)
+    (reports / "phase20_repro.md").write_text(render(res))
+    (reports / "phase20_repro.json").write_text(json.dumps(res, indent=1, default=str))
+    print("reproducible" if res["passed"] else "NOT reproducible", "-> reports/phase20_repro.md")
+    if not res["passed"]:
+        raise SystemExit(1)
+
+
 def cmd_kite_login(args: argparse.Namespace) -> None:
     """Without --request-token: print the Zerodha login URL. With it: print a one-day access token
     for MARKET_DATA_ACCESS_TOKEN (not stored anywhere by this command)."""
@@ -428,6 +443,12 @@ def main() -> None:
     mo.add_argument("--name", default="core100_s5")
     mo.add_argument("--reports", default="../reports")
     mo.set_defaults(func=cmd_monitor)
+    rp = sub.add_parser("repro", help="Phase 20: ML reproducibility (artifacts, dataset rebuild, refit)")
+    rp.add_argument("--name", default="core100_s5")
+    rp.add_argument("--symbols", type=int, default=6)
+    rp.add_argument("--seed", type=int, default=20)
+    rp.add_argument("--reports", default="../reports")
+    rp.set_defaults(func=cmd_repro)
     kl = sub.add_parser("kite-login", help="Zerodha Kite Connect login URL / request-token exchange")
     kl.add_argument("--request-token")
     kl.set_defaults(func=cmd_kite_login)

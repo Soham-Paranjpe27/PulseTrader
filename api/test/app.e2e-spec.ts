@@ -535,6 +535,66 @@ describe('PulseTrader API (e2e, real PostgreSQL)', () => {
     await other.agent.get(`/api/portfolios/${p.body.id}`).expect(404);
   });
 
+  it('concurrent paper trades neither lose updates nor oversell', async () => {
+    const u = await login('race@x.co');
+    const p = await u.agent
+      .post('/api/portfolios')
+      .set('x-csrf-token', u.csrf)
+      .send({ name: 'Race', cash: 10000 })
+      .expect(201);
+    const trade = (side: 'BUY' | 'SELL', quantity: number) =>
+      u.agent
+        .post(`/api/portfolios/${p.body.id}/trades`)
+        .set('x-csrf-token', u.csrf)
+        .send({ symbol: 'RELIANCE', side, quantity });
+    const buys = await Promise.all(Array.from({ length: 8 }, () => trade('BUY', 1)));
+    expect(buys.map((r) => r.status)).toEqual(Array(8).fill(201));
+    let g = await u.agent.get(`/api/portfolios/${p.body.id}`).expect(200);
+    expect(g.body.cash).toBeCloseTo(10000 - 8 * 103);
+    expect(g.body.positions[0].quantity).toBe(8);
+    const sells = await Promise.all(Array.from({ length: 5 }, () => trade('SELL', 4)));
+    expect(sells.filter((r) => r.status === 201)).toHaveLength(2);
+    expect(sells.filter((r) => r.status === 400)).toHaveLength(3);
+    g = await u.agent.get(`/api/portfolios/${p.body.id}`).expect(200);
+    expect(g.body.positions).toHaveLength(0);
+    expect(g.body.cash).toBeCloseTo(10000);
+  });
+
+  it('concurrent duplicates hit unique constraints as 409, never 500', async () => {
+    const s = request(app.getHttpServer());
+    const regs = await Promise.all(
+      Array.from({ length: 5 }, () =>
+        s.post('/api/auth/register').send({ email: 'dup@x.co', password: 'correct horse 123' }),
+      ),
+    );
+    expect(regs.filter((r) => r.status === 201)).toHaveLength(1);
+    expect(regs.filter((r) => r.status === 409)).toHaveLength(4);
+    const u = await login('dupw@x.co');
+    const w = await u.agent
+      .post('/api/watchlists')
+      .set('x-csrf-token', u.csrf)
+      .send({ name: 'Dup' })
+      .expect(201);
+    const adds = await Promise.all(
+      Array.from({ length: 5 }, () =>
+        u.agent
+          .post(`/api/watchlists/${w.body.id}/items`)
+          .set('x-csrf-token', u.csrf)
+          .send({ symbol: 'TCS' }),
+      ),
+    );
+    expect(adds.every((r) => r.status === 201 || r.status === 409)).toBe(true);
+    const names = await Promise.all(
+      Array.from({ length: 3 }, () =>
+        u.agent.post('/api/portfolios').set('x-csrf-token', u.csrf).send({ name: 'Same', cash: 1 }),
+      ),
+    );
+    expect(names.filter((r) => r.status === 201)).toHaveLength(1);
+    expect(names.filter((r) => r.status === 409)).toHaveLength(2);
+    const list = await u.agent.get('/api/watchlists').expect(200);
+    expect(list.body[0].items).toHaveLength(1);
+  });
+
   it('logout revokes the session', async () => {
     const { agent, csrf } = await login('bye@x.co');
     await agent.post('/api/auth/logout').set('x-csrf-token', csrf).expect(200);

@@ -356,3 +356,49 @@ def test_replay_outcomes_equal_research_labels_and_evaluate(golden_dataset):
 
 def test_round_trip_cost_matches_backtest_costs():
     assert 9.0 < round_trip_cost_bp() < 12.0
+
+
+def test_api_sink_queues_during_an_outage_and_keeps_order():
+    import threading
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+
+    from pulsetrader.live.pipeline import ApiSink
+
+    state = {"code": 503, "got": []}
+
+    class H(BaseHTTPRequestHandler):
+        def do_POST(self):  # noqa: N802 (http.server API)
+            body = json.loads(self.rfile.read(int(self.headers["content-length"])))
+            if state["code"] == 200:
+                state["got"].append((self.path, body))
+            self.send_response(state["code"])
+            self.end_headers()
+            self.wfile.write(b"{}")
+
+        def log_message(self, *a):  # quiet
+            pass
+
+    srv = HTTPServer(("127.0.0.1", 0), H)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    try:
+        sink = ApiSink(f"http://127.0.0.1:{srv.server_port}/api", "t" * 40, timeout=2, max_pending=3)
+        sink.predictions([{"n": 1}])
+        sink.outcomes([{"prediction_id": "p1", "actual_price": 1, "actual_return": 0, "actual_class": "UP",
+                        "prediction_error": 0, "direction_correct": True}])  # fmt: skip
+        assert sink.stats()["pending"] == 2 and sink.failures == 1 and state["got"] == []
+        state["code"] = 200
+        sink.retry_at = 0.0  # skip the backoff wait
+        sink.status({"state": "REPLAY"})
+        assert [p for p, _ in state["got"]] == ["/api/live/ingest", "/api/live/outcomes", "/api/live/status"]
+        assert sink.stats() == {"sent": 3, "failures": 1, "rejected": 0, "pending": 0, "dropped": 0}
+        state["code"] = 400  # an invalid request is not retried
+        sink.status({"bad": True})
+        assert sink.rejected == 1 and not sink.pending
+        state["code"] = 503  # a long outage: the bounded queue drops the oldest
+        for i in range(5):
+            sink.retry_at = 0.0
+            sink.status({"i": i})
+        assert len(sink.pending) == 3 and sink.dropped == 2
+        assert [b["i"] for _, b in sink.pending] == [2, 3, 4]
+    finally:
+        srv.shutdown()

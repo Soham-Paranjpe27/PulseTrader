@@ -30,6 +30,7 @@ def served(golden_dataset, tmp_path_factory):
     """Golden walk-forward model exported into a registry as CANDIDATE."""
     from pulsetrader.experiments import optimize as opt
     from pulsetrader.experiments.register import export_artifact, write_serving_files
+    from pulsetrader.registry.registry import write_digests
 
     tmp = tmp_path_factory.mktemp("serve")
     dev = opt.load_dev(golden_dataset, 5, (0.001,), dataset="ds", n_pre=1, min_train_frac=0.67,
@@ -46,6 +47,7 @@ def served(golden_dataset, tmp_path_factory):
     art = reg.artifact_dir("lgb-golden", 1)
     export_artifact(wf, cal, golden_dataset, art, "ds", min_train_frac=0.67)
     write_serving_files(art, golden_dataset / "datasets" / "ds", bt)
+    write_digests(art)
     exp = r["experiment"]
     rec = ModelRecord(
         model_id="lgb-golden", version=1, task="y_5m_10bp", model_type="lightgbm",
@@ -164,6 +166,23 @@ def test_production_model_answers_unnamed_requests(served, monkeypatch):
     p = c.post("/predict", json={"symbol": sym, "timestamp": ts.isoformat()}).json()
     assert p["model_status"] == "PRODUCTION" and p["research_only"] is False
     service.reset()
+
+
+def test_tampered_artifact_is_refused(served):
+    import shutil
+
+    from pulsetrader.serve.models import ModelServer
+
+    root = served["root"].parent / "tamper_root"
+    if root.exists():
+        shutil.rmtree(root)
+    shutil.copytree(served["root"] / "registry", root / "registry")
+    assert "lgb-golden@v1" in ModelServer(root / "registry").models  # digests recorded and matching
+    art = root / "registry" / "artifacts" / "lgb-golden" / "v1"
+    (art / "serving.json").write_text((art / "serving.json").read_text().replace("0.1", "0.9"))
+    srv = ModelServer(root / "registry")
+    assert "lgb-golden@v1" not in srv.models
+    assert "serving.json changed" in srv.load_errors["lgb-golden@v1"]
 
 
 def test_bars_endpoint(client, served):

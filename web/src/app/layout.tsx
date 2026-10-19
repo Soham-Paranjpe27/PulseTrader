@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { headers } from 'next/headers';
 import { Nav } from '@/components/nav';
 import './globals.css';
 import { Providers } from './providers';
@@ -11,11 +12,12 @@ export const metadata: Metadata = {
 // Applies the saved theme before first paint (no flash). Reads only the UI prefs key.
 const themeScript = `try{var p=JSON.parse(localStorage.getItem('pulsetrader-prefs')||'{}');document.documentElement.dataset.theme=(p.state&&p.state.theme)||'dark'}catch(e){document.documentElement.dataset.theme='dark'}`;
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const nonce = (await headers()).get('x-nonce') ?? undefined; // set by middleware.ts (CSP)
   return (
     <html lang="en" data-theme="dark" suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body className="min-h-screen antialiased">
         <Providers>

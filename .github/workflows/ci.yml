@@ -45,6 +45,12 @@ jobs:
       - run: npm run build
       - run: npm test
       - run: npm run test:e2e
+      # the migrations must produce exactly schema.prisma (no unmigrated schema change)
+      - run: PGPASSWORD=ci psql -h localhost -U ci -d pulsetrader_test -c 'CREATE DATABASE pulsetrader_shadow'
+      - run: >-
+          npx prisma migrate diff --exit-code --from-migrations prisma/migrations
+          --to-schema-datamodel prisma/schema.prisma
+          --shadow-database-url postgresql://ci:ci@localhost:5432/pulsetrader_shadow
       - run: npm audit --omit=dev --audit-level=moderate
   web:
     runs-on: ubuntu-latest
@@ -66,6 +72,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: docker build ml
-      - run: docker build api
-      - run: docker build web
+      # builds the ml, api and web images, starts the compose stack, waits for every health check and
+      # checks it end to end through the web app (scripts/hardening/compose_smoke.sh)
+      - run: bash scripts/hardening/compose_smoke.sh
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: secret scan (full git history)
+        run: docker run --rm -v "$PWD:/repo:ro" zricethezav/gitleaks:v8.28.0 git /repo --no-banner --redact -v
+      - name: workflow lint
+        run: docker run --rm -v "$PWD:/repo:ro" -w /repo rhysd/actionlint:1.7.7 -no-color

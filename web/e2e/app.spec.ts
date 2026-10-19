@@ -40,6 +40,22 @@ test('home shows measured model metrics and honest status', async ({ page }) => 
   );
 });
 
+test('pages run under the nonce CSP without violations', async ({ page }) => {
+  const violations: string[] = [];
+  page.on('console', (m) => {
+    if (/Content Security Policy|Refused to (execute|load)/i.test(m.text())) violations.push(m.text());
+  });
+  for (const path of ['/', '/stocks/RELIANCE', '/monitoring', '/login']) {
+    const r = await page.goto(path);
+    expect(r?.headers()['content-security-policy']).toMatch(
+      /script-src 'self' 'nonce-[^']+' 'strict-dynamic'/,
+    );
+    await expect(page.getByRole('navigation').first()).toBeVisible();
+  }
+  await expect(page.locator('html')).toHaveAttribute('data-theme', /dark|light/); // nonced theme script ran
+  expect(violations).toEqual([]);
+});
+
 test('registration validates input, then creates the account', async ({ page }) => {
   await page.goto('/register');
   await page.getByLabel('Email').fill('not-an-email');

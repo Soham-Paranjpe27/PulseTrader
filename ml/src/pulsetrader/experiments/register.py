@@ -34,6 +34,7 @@ from pulsetrader.registry.registry import (
     RegistryError,
     Status,
     gate,
+    write_digests,
 )
 
 log = logging.getLogger(__name__)
@@ -255,6 +256,7 @@ def register_from_walk_forward(
     art = registry.artifact_dir(model_id, version)
     out = export_artifact(wf_dir, cal_dir, data_root, art, dataset)
     write_serving_files(art, data_root / "datasets" / dataset, bt_dir)
+    write_digests(art)  # the inference server refuses the artifact if any file changes later
     v = m["validation"]
     metric_keys = ("accuracy", "balanced_accuracy", "macro_f1", "mcc", "roc_auc_ovr", "brier",
                    "ece_top", "coverage", "n")  # fmt: skip

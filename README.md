@@ -14,8 +14,20 @@ reports/       generated data inventory and quality reports
 docs/          design and audit documents
 api/           NestJS backend (Prisma/PostgreSQL, Redis, JWT cookies)
 web/           Next.js dashboard (docs/frontend.md)
+scripts/hardening/  Phase 20 security, load, failure and compose smoke tests
 experiments/   one directory per experiment, never overwritten
 ```
+
+## Documentation
+Architecture and operations: docs/architecture.md, docs/deployment.md, docs/security.md,
+docs/troubleshooting.md, docs/monitoring.md. Data and models: docs/data-pipeline.md,
+docs/feature-engineering.md, docs/labels.md, docs/leakage-prevention.md, docs/model-training.md,
+docs/model-evaluation.md, docs/walk-forward.md, docs/backtesting.md, docs/model-registry.md,
+docs/ml-service.md, docs/live-data.md. Results: docs/model-card.md, docs/final-audit.md.
+
+**Result in one line:** the best models reach validation MCC 0.19 at full coverage (accuracy ~50%,
+balanced accuracy ~45%), far from the 70-80% accuracy target, and lose money after Indian intraday
+costs. They stay CANDIDATE, research only.
 
 ## Quick start
 ```
