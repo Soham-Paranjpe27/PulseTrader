@@ -1,14 +1,16 @@
 # knowledge.md — PulseTrader V4 project state
 
-Last updated: 2026-10-19 (phase 12 done).
+Last updated: 2026-10-19 (phase 13 done).
 
 ## Current phase
-Phases 0–12 DONE on real data (Phase 12 finished 2026-10-19). Next: Phase 13 (model registry).
+Phases 0–13 DONE on real data (Phase 13 finished 2026-10-19). Next: Phase 14 (ML inference API).
 
 ## Next exact action
-1. Phase 13 (model registry): register the tuned LightGBM y_1m_5bp / y_5m_10bp walk-forward models
-   with dataset/feature/label versions, preprocessor, calibrator (Phase 10 isotonic), validation metrics
-   and Phase 12 backtest results; mark them research-only (not profitable after costs). Test unused.
+1. Phase 14 (ML inference API): FastAPI endpoints GET /health, /ready, POST /predict, /predict/batch,
+   GET /models, /models/active, /features, /metrics. Load artifacts from data/registry (registry.py);
+   features from the shared engine; decisions from raw probs, calibrated prob reported; abstain
+   (NO_PREDICTION) on low confidence / stale / invalid / OOD input. No PRODUCTION model exists, so
+   /models/active must say so and serving should expose CANDIDATE models flagged research-only.
 2. If the container was recycled, data/ is gone: torch needs `pip install torch --index-url
    https://download.pytorch.org/whl/cpu`, then `pulsetrader fetch`, `pipeline`, `security`, `dataset`
    (~35 min), then `pulsetrader optimize --steps W` / `T` to recreate Phase 9 predictions.
@@ -126,13 +128,23 @@ optional SL/TP, 10 positions x 10% equity, one per symbol, Indian intraday charg
   (1m P>=0.60, 5m P>=0.56) gives 1.1/2.5 bp gross per trade, still -9.5% / -34.4% net.
 - Signal is real but 4-10x too small for intraday costs. Not tradeable.
 
+## Phase 13 results (registry-v1, DONE 2026-10-19) — reports/model_registry.{md,json}, docs/model-registry.md
+- Registry data/registry/registry.json (atomic JSON) + artifacts/{model_id}/v{n}/ (model.txt booster,
+  preprocessor.json, features.json, calibrator.json, model_meta.json). data/registry (12 MB) IS committed so later phases survive a container
+  recycle; copy also in reports/model_registry.json. Rebuild: `pulsetrader registry register`.
+- Statuses EXPERIMENT/CANDIDATE/SHADOW/PRODUCTION/RETIRED/REJECTED with gate-checked transitions.
+- lightgbm-y_1m_5bp-tuned@v1 and lightgbm-y_5m_10bp-tuned@v1: CANDIDATE. All candidate gates PASSED
+  (refit reproduces stored validation predictions, max diff 3e-8). backtest_passed FAILED,
+  test_passed/shadow_passed NOT_RUN, so neither can reach SHADOW/PRODUCTION. Accuracy gate NOT VERIFIED.
+
 ## Architecture
 - `ml/src/pulsetrader/`: config, data/{schema,validate,io,discovery,pipeline},
   security/{lists,master}, features/{engine,preprocess}, labels/labels, splits/splits, eval/metrics,
   datasets/build, audit/leakage, eval/multiclass, models/classical,
   experiments/classical, datasets/sequences, models/deep, experiments/deep, serve/app (health/ready only),
-  experiments/{optimize,calibrate,robustness,backtest}, eval/calibration, backtest/engine,
-  cli (fetch, discover, pipeline, security, dataset, audit, classical, deep, optimize, calibrate, robustness, backtest).
+  experiments/{optimize,calibrate,robustness,backtest,register}, eval/calibration, backtest/engine,
+  registry/registry,
+  cli (fetch, discover, pipeline, security, dataset, audit, classical, deep, optimize, calibrate, robustness, backtest, registry).
 - Docker baseline: docker-compose (postgres, redis, ml-service). ml/Dockerfile. CI: .github/workflows/ci.yml.
 - Backend (NestJS) and frontend (Next.js): not started.
 
@@ -141,7 +153,7 @@ optional SL/TP, 10 positions x 10% equity, one per symbol, Indian intraday charg
   features `features-v2` (scale-free only), labels `labels-v1`, dataset builder `dataset-v1`,
   audit `leakage-audit-v1`.
 - Dataset: `canonical-v1-8cc94bf262aa`.
-- Experiments: 25 Phase 7 runs, `classical-v1`, ids 20261017T115408-p7-*. No model registered.
+- Experiments: 25 Phase 7 runs, `classical-v1`, ids 20261017T115408-p7-*. Registered models: see Phase 13 results.
 
 ## Decisions
 - Canonical keeps REGULAR session bars only; non-regular bars are kept in validated/ and reported.

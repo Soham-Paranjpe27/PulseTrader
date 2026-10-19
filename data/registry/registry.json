@@ -1,0 +1,838 @@
+{
+ "registry_version": "registry-v1",
+ "updated_at": "2026-10-19T07:32:32.240982+00:00",
+ "models": [
+  {
+   "model_id": "lightgbm-y_1m_5bp-tuned",
+   "version": 1,
+   "task": "y_1m_5bp",
+   "model_type": "lightgbm",
+   "dataset_version": "dataset-v1-features-v2-labels-v1-u100-s5",
+   "feature_version": "features-v2",
+   "label_version": "labels-v1",
+   "training_period": {
+    "name": "train",
+    "start": "2022-01-03",
+    "end": "2024-11-04",
+    "fit_period": [
+     "2022-01-03 13:30:00+05:30",
+     "2024-07-24 15:15:00+05:30"
+    ]
+   },
+   "validation_period": {
+    "name": "validation",
+    "start": "2024-11-05",
+    "end": "2025-06-13"
+   },
+   "test_period": {
+    "name": "test",
+    "start": "2025-06-16",
+    "end": "2026-01-21",
+    "used": false
+   },
+   "hyperparameters": {
+    "objective": "multiclass",
+    "num_class": 3,
+    "learning_rate": 0.030798097215384172,
+    "num_leaves": 197,
+    "min_data_in_leaf": 955,
+    "feature_fraction": 0.4740892774009289,
+    "bagging_fraction": 0.7149935014212363,
+    "bagging_freq": 1,
+    "lambda_l2": 1.5703794150659582,
+    "num_threads": 4,
+    "verbose": -1,
+    "max_rounds": 1000,
+    "early_stopping": 50,
+    "max_depth": -1,
+    "class_weight": "balanced",
+    "best_iteration": 149
+   },
+   "metrics": {
+    "validation": {
+     "accuracy": 0.5005612667696925,
+     "balanced_accuracy": 0.452359766287535,
+     "macro_f1": 0.4425558578747144,
+     "mcc": 0.19442096306694182,
+     "roc_auc_ovr": 0.6668652722355725,
+     "brier": 0.600846353921925,
+     "ece_top": 0.03694176067434992,
+     "coverage": 1.0,
+     "n": 1116225
+    },
+    "validation_baselines": {
+     "majority_accuracy": 0.5805585791395104,
+     "momentum_mcc": 0.08894856913855421,
+     "momentum_accuracy": 0.47237788080360144
+    },
+    "validation_calibrated": {
+     "accuracy": 0.5931635646934982,
+     "balanced_accuracy": 0.3910000108086578,
+     "mcc": 0.16511151482996153,
+     "brier": 0.5316281114885265,
+     "ece_classwise": 0.019207495454818733
+    },
+    "walk_forward_pre_validation": {
+     "accuracy": {
+      "mean": 0.5497260340737944,
+      "median": 0.5492797283464688,
+      "std": 0.04522236442053594,
+      "min": 0.5041218843628482,
+      "max": 0.5962227952393916
+     },
+     "balanced_accuracy": {
+      "mean": 0.4668681121270394,
+      "median": 0.4685963771565531,
+      "std": 0.007448687749341728,
+      "min": 0.45723662907753293,
+      "max": 0.47304306511751837
+     },
+     "macro_f1": {
+      "mean": 0.46251630662000126,
+      "median": 0.4625159238092974,
+      "std": 0.012170277334436215,
+      "min": 0.4501271852654118,
+      "max": 0.47490619359599834
+     },
+     "mcc": {
+      "mean": 0.22285072237449569,
+      "median": 0.2226364686333991,
+      "std": 0.01775381533599031,
+      "min": 0.2051644861764678,
+      "max": 0.24096546605471678
+     },
+     "roc_auc_ovr": {
+      "mean": 0.6875960649616047,
+      "median": 0.687100207273533,
+      "std": 0.01417896450440867,
+      "min": 0.674439734299531,
+      "max": 0.7017441109998218
+     },
+     "brier": {
+      "mean": 0.5621300971431422,
+      "median": 0.5620427178145604,
+      "std": 0.03302486275688963,
+      "min": 0.5290922643971608,
+      "max": 0.5953426885462875
+     },
+     "ece_top": {
+      "mean": 0.052419250586814736,
+      "median": 0.04961196574759666,
+      "std": 0.022992744843448598,
+      "min": 0.031024085136754687,
+      "max": 0.07942898571531096
+     }
+    },
+    "selective": [
+     {
+      "threshold": 0.4,
+      "n_predictions": 420628,
+      "coverage": 0.37683083607695583,
+      "accuracy": 0.3282211360156718,
+      "sign_accuracy": 0.5229799252546193,
+      "balanced_accuracy": 0.37615578894439317,
+      "mcc": 0.06526668883627926,
+      "precision_up": 0.3285334817722829,
+      "precision_down": 0.327924755594681,
+      "recall_up": 0.29077621860832964,
+      "recall_down": 0.29888513513513515,
+      "share_up": 0.486886274808144
+     },
+     {
+      "threshold": 0.5,
+      "n_predictions": 55969,
+      "coverage": 0.05014132455374141,
+      "accuracy": 0.3994890028408583,
+      "sign_accuracy": 0.5481963229644982,
+      "balanced_accuracy": 0.3941515583105066,
+      "mcc": 0.10825617935342592,
+      "precision_up": 0.39460143156926436,
+      "precision_down": 0.40751581531489,
+      "recall_up": 0.059323828498083334,
+      "recall_down": 0.036452702702702705,
+      "share_up": 0.6215404956315103
+     },
+     {
+      "threshold": 0.6,
+      "n_predictions": 1137,
+      "coverage": 0.001018611839010952,
+      "accuracy": 0.4731750219876869,
+      "sign_accuracy": 0.5708003518029904,
+      "balanced_accuracy": 0.38367143600225645,
+      "mcc": 0.12479880290995547,
+      "precision_up": 0.4932781799379524,
+      "precision_down": 0.3588235294117647,
+      "recall_up": 0.0020614457779256756,
+      "recall_down": 0.0002576013513513514,
+      "share_up": 0.8504837291116975
+     },
+     {
+      "threshold": 0.7,
+      "n_predictions": 5,
+      "coverage": 4.479383636811575e-06,
+      "accuracy": 1.0,
+      "sign_accuracy": 1.0,
+      "balanced_accuracy": 1.0,
+      "mcc": 0.0,
+      "precision_up": 1.0,
+      "precision_down": null,
+      "recall_up": 2.1608446309493456e-05,
+      "recall_down": 0.0,
+      "share_up": 1.0
+     },
+     {
+      "threshold": 0.8,
+      "n_predictions": 0,
+      "coverage": 0.0
+     },
+     {
+      "threshold": 0.9,
+      "n_predictions": 0,
+      "coverage": 0.0
+     }
+    ]
+   },
+   "backtest_metrics": {
+    "model|costs": {
+     "total_return": -0.9999950858749745,
+     "cagr": -0.9999999989485835,
+     "sharpe": -225.79662553962444,
+     "sortino": -15.835682477492764,
+     "calmar": -1.0000049130977526,
+     "max_drawdown": -0.9999950858749745,
+     "trades": 100327,
+     "win_rate": 0.1101697449340656,
+     "profit_factor": 0.10246524932186904,
+     "avg_trade_return_bp": -12.175187395685885,
+     "total_costs": 852495.3450609645
+    },
+    "model|zero_costs": {
+     "total_return": 0.47881293466907127,
+     "cagr": 0.9380726123224756,
+     "sharpe": 7.54013839862226,
+     "sortino": 7.5676172182283805,
+     "calmar": 24.49650927098706,
+     "max_drawdown": -0.03829413415377925,
+     "trades": 103611,
+     "win_rate": 0.48513188754089814,
+     "profit_factor": 1.0943974497420113,
+     "avg_trade_return_bp": 0.3793285875149036,
+     "total_costs": 0.0
+    },
+    "model_gated|costs": {
+     "total_return": -0.0951753512963841,
+     "cagr": -0.1556189326818994,
+     "sharpe": -12.611903509190547,
+     "sortino": -9.169755796331682,
+     "calmar": -1.6285825748164713,
+     "max_drawdown": -0.09555483098511997,
+     "trades": 1059,
+     "win_rate": 0.19452313503305005,
+     "profit_factor": 0.19255815562555398,
+     "avg_trade_return_bp": -9.440187268461235,
+     "total_costs": 85389.80695016784
+    },
+    "model_gated|zero_costs": {
+     "total_return": 0.011315747712590918,
+     "cagr": 0.019212807981911384,
+     "sharpe": 1.74653618553512,
+     "sortino": 1.8246066366542817,
+     "calmar": 2.0039346420717012,
+     "max_drawdown": -0.009587542217469158,
+     "trades": 1061,
+     "win_rate": 0.48539114043355325,
+     "profit_factor": 1.2200896743190242,
+     "avg_trade_return_bp": 1.0634196844554553,
+     "total_costs": 0.0
+    },
+    "momentum|costs": {
+     "total_return": -0.9999974789879461,
+     "cagr": -0.9999999996599658,
+     "sharpe": -264.1525213875418,
+     "sortino": -15.84611101404673,
+     "calmar": -1.0000025206783743,
+     "max_drawdown": -0.9999974789879461,
+     "trades": 100466,
+     "win_rate": 0.10136762685883782,
+     "profit_factor": 0.10592445997592112,
+     "avg_trade_return_bp": -12.821884920367033,
+     "total_costs": 824745.9567318489
+    },
+    "momentum|zero_costs": {
+     "total_return": -0.23689854416912237,
+     "cagr": -0.36698452160446404,
+     "sharpe": -6.155354212478709,
+     "sortino": -5.226582220220393,
+     "calmar": -1.508181899126039,
+     "max_drawdown": -0.2433290850507649,
+     "trades": 103489,
+     "win_rate": 0.44768042980413375,
+     "profit_factor": 0.9428962031706726,
+     "avg_trade_return_bp": -0.25947512996856237,
+     "total_costs": 0.0
+    },
+    "naive_random|costs": {
+     "total_return": -0.9999965137798977,
+     "cagr": -0.9999999994116711,
+     "sharpe": -333.8177972695677,
+     "sortino": -15.856708834060047,
+     "calmar": -1.000003485643925,
+     "max_drawdown": -0.9999965137798977,
+     "trades": 100327,
+     "win_rate": 0.10565450975310733,
+     "profit_factor": 0.10576801073912649,
+     "avg_trade_return_bp": -12.517729886918351,
+     "total_costs": 839486.4821851559
+    },
+    "naive_random|zero_costs": {
+     "total_return": 0.03219914536191881,
+     "cagr": 0.0550616991526478,
+     "sharpe": 0.9925050212693823,
+     "sortino": 1.1482949972525835,
+     "calmar": 1.8188080754358888,
+     "max_drawdown": -0.030273507082077322,
+     "trades": 102568,
+     "win_rate": 0.462103190078777,
+     "profit_factor": 1.0070654611320145,
+     "avg_trade_return_bp": 0.03184692302690931,
+     "total_costs": 0.0
+    },
+    "naive_long|costs": {
+     "total_return": -0.999996367991562,
+     "cagr": -0.9999999993694617,
+     "sharpe": -218.321991647237,
+     "sortino": -15.83298905776997,
+     "calmar": -1.000003631391089,
+     "max_drawdown": -0.999996367991562,
+     "trades": 100327,
+     "win_rate": 0.10620271711503385,
+     "profit_factor": 0.11414999590471211,
+     "avg_trade_return_bp": -12.475636644075886,
+     "total_costs": 846907.8589244757
+    },
+    "naive_long|zero_costs": {
+     "total_return": 0.08278369623782211,
+     "cagr": 0.1439828999679058,
+     "sharpe": 1.5767557402127372,
+     "sortino": 1.6435908306155678,
+     "calmar": 1.8398246607891053,
+     "max_drawdown": -0.07825903361146991,
+     "trades": 102754,
+     "win_rate": 0.45733499425813107,
+     "profit_factor": 1.0185215160451464,
+     "avg_trade_return_bp": 0.07968500816917229,
+     "total_costs": 0.0
+    },
+    "buy_and_hold|costs": {
+     "total_return": 0.015253735587454464,
+     "cagr": 0.02593406703290646,
+     "sharpe": 0.23073216484151363,
+     "sortino": 0.22156194576852564,
+     "calmar": 0.17408564432150406,
+     "max_drawdown": -0.1489730364268924,
+     "trades": 200,
+     "win_rate": null,
+     "profit_factor": null,
+     "avg_trade_return_bp": null,
+     "total_costs": 1070.9685743040964
+    },
+    "buy_and_hold|zero_costs": {
+     "total_return": 0.016527999596397835,
+     "cagr": 0.028112814438896017,
+     "sharpe": 0.24230051421603083,
+     "sortino": 0.23277596307046608,
+     "calmar": 0.1887872423845883,
+     "max_drawdown": -0.14891268119498213,
+     "trades": 200,
+     "win_rate": null,
+     "profit_factor": null,
+     "avg_trade_return_bp": null,
+     "total_costs": 0.0
+    }
+   },
+   "calibration_version": "calibrate-v1:isotonic",
+   "artifact_path": "artifacts/lightgbm-y_1m_5bp-tuned/v1",
+   "status": "CANDIDATE",
+   "created_at": "2026-10-19T07:29:48.761070+00:00",
+   "gates": {
+    "no_leakage": {
+     "status": "PASSED",
+     "evidence": "leakage audit leakage-audit-v1 on dataset-v1-features-v2-labels-v1-u100-s5"
+    },
+    "no_critical_data_quality": {
+     "status": "PASSED",
+     "evidence": "flagged raw rows 21,556 of 720,421,072 (2.99e-05); flagged rows are excluded from canonical; limit 0.001",
+     "flagged_fraction": 2.9921390194983082e-05
+    },
+    "validation_passed": {
+     "status": "PASSED",
+     "evidence": "validation MCC 0.194 (min 0.05, momentum 0.089), balanced accuracy 0.452 (chance 0.333), accuracy 0.501 (majority 0.581)"
+    },
+    "walk_forward_passed": {
+     "status": "PASSED",
+     "evidence": "5 folds: MCC min 0.194, max 0.241, std 0.018 (max 0.05); beats momentum in 5/5"
+    },
+    "calibration_passed": {
+     "status": "PASSED",
+     "evidence": "isotonic calibration, validation classwise ECE 0.019 (max 0.05); raw 0.142"
+    },
+    "reproducible": {
+     "status": "PASSED",
+     "evidence": "refit reproduces 1,116,225/1,116,225 stored validation predictions, max abs diff 2.98e-08 (tol 0.0001); saved model reload diff 0.0e+00"
+    },
+    "backtest_passed": {
+     "status": "FAILED",
+     "evidence": "gated strategy after costs: total return -9.5%, Sharpe -12.61, max DD -9.6%; buy-and-hold 1.5%"
+    },
+    "test_passed": {
+     "status": "NOT_RUN",
+     "evidence": "test period untouched until model development is finished"
+    },
+    "shadow_passed": {
+     "status": "NOT_RUN",
+     "evidence": "no live shadow run yet (Phase 17-18)"
+    }
+   },
+   "accuracy_gate": "NOT VERIFIED",
+   "source_experiments": {
+    "walk_forward": "20261018T192847-p9-wf-expanding-lightgbm-y_1m_5bp-tuned-cc45c314",
+    "calibration": "20261019T065248-p10-calibration-lightgbm-y_1m_5bp-tuned-875e6002",
+    "backtest": "20261019T071756-p12-backtest-lightgbm-y_1m_5bp-tuned-0fc4de4f"
+   },
+   "notes": [
+    "Decisions use the raw tuned probabilities (argmax); calibrated probabilities are for display (Phase 10: calibrated argmax lowers MCC).",
+    "Accuracy target (70-80%) not reached; spec section 39 verdict NOT VERIFIED."
+   ],
+   "history": [
+    {
+     "at": "2026-10-19T07:29:48.761070+00:00",
+     "from": null,
+     "to": "EXPERIMENT",
+     "reason": "exported from 20261018T192847-p9-wf-expanding-lightgbm-y_1m_5bp-tuned-cc45c314"
+    },
+    {
+     "at": "2026-10-19T07:29:48.765049+00:00",
+     "from": "EXPERIMENT",
+     "to": "CANDIDATE",
+     "reason": "all CANDIDATE gates passed"
+    }
+   ]
+  },
+  {
+   "model_id": "lightgbm-y_5m_10bp-tuned",
+   "version": 1,
+   "task": "y_5m_10bp",
+   "model_type": "lightgbm",
+   "dataset_version": "dataset-v1-features-v2-labels-v1-u100-s5",
+   "feature_version": "features-v2",
+   "label_version": "labels-v1",
+   "training_period": {
+    "name": "train",
+    "start": "2022-01-03",
+    "end": "2024-11-04",
+    "fit_period": [
+     "2022-01-03 13:30:00+05:30",
+     "2024-07-24 15:15:00+05:30"
+    ]
+   },
+   "validation_period": {
+    "name": "validation",
+    "start": "2024-11-05",
+    "end": "2025-06-13"
+   },
+   "test_period": {
+    "name": "test",
+    "start": "2025-06-16",
+    "end": "2026-01-21",
+    "used": false
+   },
+   "hyperparameters": {
+    "objective": "multiclass",
+    "num_class": 3,
+    "learning_rate": 0.030079096692800344,
+    "num_leaves": 18,
+    "min_data_in_leaf": 529,
+    "feature_fraction": 0.4433952597692443,
+    "bagging_fraction": 0.9121370318954606,
+    "bagging_freq": 1,
+    "lambda_l2": 12.058556610651252,
+    "num_threads": 4,
+    "verbose": -1,
+    "max_rounds": 1000,
+    "early_stopping": 50,
+    "max_depth": -1,
+    "class_weight": "balanced",
+    "best_iteration": 323
+   },
+   "metrics": {
+    "validation": {
+     "accuracy": 0.4795337620286818,
+     "balanced_accuracy": 0.43083715998275296,
+     "macro_f1": 0.4263585646221894,
+     "mcc": 0.16846118558677245,
+     "roc_auc_ovr": 0.645905120747277,
+     "brier": 0.6183920541484118,
+     "ece_top": 0.02763992424379353,
+     "coverage": 1.0,
+     "n": 1101326
+    },
+    "validation_baselines": {
+     "majority_accuracy": 0.5510239474960185,
+     "momentum_mcc": 0.08685704891312156,
+     "momentum_accuracy": 0.4542033875528227
+    },
+    "validation_calibrated": {
+     "accuracy": 0.5636069610633001,
+     "balanced_accuracy": 0.39020295398686294,
+     "mcc": 0.15513186217992436,
+     "brier": 0.55787315003547,
+     "ece_classwise": 0.012907374966049198
+    },
+    "walk_forward_pre_validation": {
+     "accuracy": {
+      "mean": 0.5477163338608356,
+      "median": 0.5466443756013861,
+      "std": 0.053742700171270245,
+      "min": 0.49458774877229256,
+      "max": 0.6029888354682778
+     },
+     "balanced_accuracy": {
+      "mean": 0.4432325320296043,
+      "median": 0.4435419114275617,
+      "std": 0.003183309515171957,
+      "min": 0.4390507932585606,
+      "max": 0.44679551200473305
+     },
+     "macro_f1": {
+      "mean": 0.4426388491892205,
+      "median": 0.44210634502153723,
+      "std": 0.0023139881500587206,
+      "min": 0.4404393049115696,
+      "max": 0.4459034018022378
+     },
+     "mcc": {
+      "mean": 0.19973006104551472,
+      "median": 0.1995841597574694,
+      "std": 0.010265050736042758,
+      "min": 0.19034031614986852,
+      "max": 0.20941160851725152
+     },
+     "roc_auc_ovr": {
+      "mean": 0.6680330119945266,
+      "median": 0.6687744515382456,
+      "std": 0.010011370117980112,
+      "min": 0.6578357537933724,
+      "max": 0.6767473911082429
+     },
+     "brier": {
+      "mean": 0.5750294845601784,
+      "median": 0.5771789210796825,
+      "std": 0.03516294985117745,
+      "min": 0.5359070562666396,
+      "max": 0.6098530398147096
+     },
+     "ece_top": {
+      "mean": 0.06876775915207996,
+      "median": 0.06858021762013958,
+      "std": 0.03483176887008318,
+      "min": 0.03557180713881077,
+      "max": 0.10233879422922987
+     }
+    },
+    "selective": [
+     {
+      "threshold": 0.4,
+      "n_predictions": 376250,
+      "coverage": 0.34163363073240804,
+      "accuracy": 0.3244013289036545,
+      "sign_accuracy": 0.5103495016611296,
+      "balanced_accuracy": 0.34883097113588724,
+      "mcc": 0.025064078969895844,
+      "precision_up": 0.31722462620750835,
+      "precision_down": 0.3320318711991182,
+      "recall_up": 0.2537794391906389,
+      "recall_down": 0.2401737371333373,
+      "share_up": 0.5153249169435216
+     },
+     {
+      "threshold": 0.5,
+      "n_predictions": 55792,
+      "coverage": 0.0506589329589967,
+      "accuracy": 0.37492830513335246,
+      "sign_accuracy": 0.518551046745053,
+      "balanced_accuracy": 0.35612708254944364,
+      "mcc": 0.042499445027570186,
+      "precision_up": 0.3693658595061136,
+      "precision_down": 0.3832054941134499,
+      "recall_up": 0.050853262035615854,
+      "recall_down": 0.03408500426409631,
+      "share_up": 0.5980785775738457
+     },
+     {
+      "threshold": 0.6,
+      "n_predictions": 2007,
+      "coverage": 0.0018223486960264263,
+      "accuracy": 0.369706028898854,
+      "sign_accuracy": 0.5077229696063776,
+      "balanced_accuracy": 0.3459165355305555,
+      "mcc": 0.019148276047723737,
+      "precision_up": 0.3658787255909558,
+      "precision_down": 0.3733075435203095,
+      "recall_up": 0.0014688650129557196,
+      "recall_down": 0.0015311080700501775,
+      "share_up": 0.48480318883906326
+     },
+     {
+      "threshold": 0.7,
+      "n_predictions": 5,
+      "coverage": 4.539981803752931e-06,
+      "accuracy": 1.0,
+      "sign_accuracy": 1.0,
+      "balanced_accuracy": 1.0,
+      "mcc": 0.0,
+      "precision_up": null,
+      "precision_down": 1.0,
+      "recall_up": 0.0,
+      "recall_down": 1.983300608873287e-05,
+      "share_up": 0.0
+     },
+     {
+      "threshold": 0.8,
+      "n_predictions": 0,
+      "coverage": 0.0
+     },
+     {
+      "threshold": 0.9,
+      "n_predictions": 0,
+      "coverage": 0.0
+     }
+    ]
+   },
+   "backtest_metrics": {
+    "model|costs": {
+     "total_return": -0.9999947966322514,
+     "cagr": -0.9999999988418009,
+     "sharpe": -115.32950631343319,
+     "sortino": -15.727212894432933,
+     "calmar": -1.0000052022366186,
+     "max_drawdown": -0.9999947966322514,
+     "trades": 98527,
+     "win_rate": 0.2780760603692389,
+     "profit_factor": 0.33012983926793704,
+     "avg_trade_return_bp": -12.331563323441154,
+     "total_costs": 829451.0698791405
+    },
+    "model|zero_costs": {
+     "total_return": 0.21312712884969298,
+     "cagr": 0.38646422114459233,
+     "sharpe": 1.9005350601230626,
+     "sortino": 1.894412445448696,
+     "calmar": 3.409577625277717,
+     "max_drawdown": -0.1133466556911471,
+     "trades": 100790,
+     "win_rate": 0.5086218870919734,
+     "profit_factor": 1.021603894700639,
+     "avg_trade_return_bp": 0.20140144296755644,
+     "total_costs": 0.0
+    },
+    "model_gated|costs": {
+     "total_return": -0.3435595040882674,
+     "cagr": -0.5092875687881055,
+     "sharpe": -11.353345177229016,
+     "sortino": -8.331479732852188,
+     "calmar": -1.4781793027478305,
+     "max_drawdown": -0.3445370719515394,
+     "trades": 4640,
+     "win_rate": 0.3644396551724138,
+     "profit_factor": 0.5169300284107335,
+     "avg_trade_return_bp": -9.047117558168315,
+     "total_costs": 349944.6769074822
+    },
+    "model_gated|zero_costs": {
+     "total_return": 0.12016173888608717,
+     "cagr": 0.2115665724487783,
+     "sharpe": 3.7253005389029323,
+     "sortino": 4.3796857986492865,
+     "calmar": 14.084867081945454,
+     "max_drawdown": -0.015020842668793999,
+     "trades": 4682,
+     "win_rate": 0.5296881674498077,
+     "profit_factor": 1.1978762186903154,
+     "avg_trade_return_bp": 2.4465449052344987,
+     "total_costs": 0.0
+    },
+    "momentum|costs": {
+     "total_return": -0.9999972911369654,
+     "cagr": -0.9999999996160179,
+     "sharpe": -123.10446837819288,
+     "sortino": -15.74501106658393,
+     "calmar": -1.0000027084863894,
+     "max_drawdown": -0.9999972911369654,
+     "trades": 99125,
+     "win_rate": 0.23529886506935688,
+     "profit_factor": 0.31826778533610595,
+     "avg_trade_return_bp": -12.916136247135475,
+     "total_costs": 834680.5529725165
+    },
+    "momentum|zero_costs": {
+     "total_return": -0.32137909506915274,
+     "cagr": -0.4809187738016195,
+     "sharpe": -3.62706880806127,
+     "sortino": -3.410041916248443,
+     "calmar": -1.3982344534620124,
+     "max_drawdown": -0.34394716323208185,
+     "trades": 102550,
+     "win_rate": 0.46296440760604585,
+     "profit_factor": 0.9621347249782027,
+     "avg_trade_return_bp": -0.3695444465380037,
+     "total_costs": 0.0
+    },
+    "naive_random|costs": {
+     "total_return": -0.9999953830117629,
+     "cagr": -0.9999999990538446,
+     "sharpe": -167.28291892193062,
+     "sortino": -15.803983138141174,
+     "calmar": -1.000004616063394,
+     "max_drawdown": -0.9999953830117629,
+     "trades": 98527,
+     "win_rate": 0.2689821064276797,
+     "profit_factor": 0.3446619980278166,
+     "avg_trade_return_bp": -12.458141140797405,
+     "total_costs": 851630.8270412323
+    },
+    "naive_random|zero_costs": {
+     "total_return": 0.10257536150238011,
+     "cagr": 0.17957097224629148,
+     "sharpe": 1.3723660428413174,
+     "sortino": 1.4188717040871461,
+     "calmar": 1.7488081594179228,
+     "max_drawdown": -0.10268191584036312,
+     "trades": 101625,
+     "win_rate": 0.4912767527675277,
+     "profit_factor": 1.0092045672382282,
+     "avg_trade_return_bp": 0.10036115999702085,
+     "total_costs": 0.0
+    },
+    "naive_long|costs": {
+     "total_return": -0.99999525327809,
+     "cagr": -0.9999999990084445,
+     "sharpe": -91.56302622674335,
+     "sortino": -15.642708751236004,
+     "calmar": -1.0000047457528813,
+     "max_drawdown": -0.99999525327809,
+     "trades": 98527,
+     "win_rate": 0.2618064083956682,
+     "profit_factor": 0.3491111791168288,
+     "avg_trade_return_bp": -12.422344534376965,
+     "total_costs": 841090.6072942547
+    },
+    "naive_long|zero_costs": {
+     "total_return": 0.097924182139423,
+     "cagr": 0.1711674919262609,
+     "sharpe": 0.802344720873444,
+     "sortino": 0.8268600188478378,
+     "calmar": 1.169518203747001,
+     "max_drawdown": -0.14635727035103863,
+     "trades": 100712,
+     "win_rate": 0.476169671935817,
+     "profit_factor": 1.0101048839747042,
+     "avg_trade_return_bp": 0.1049122902880369,
+     "total_costs": 0.0
+    },
+    "buy_and_hold|costs": {
+     "total_return": 0.015253735587454464,
+     "cagr": 0.02593406703290646,
+     "sharpe": 0.23073216484151363,
+     "sortino": 0.22156194576852564,
+     "calmar": 0.17408564432150406,
+     "max_drawdown": -0.1489730364268924,
+     "trades": 200,
+     "win_rate": null,
+     "profit_factor": null,
+     "avg_trade_return_bp": null,
+     "total_costs": 1070.9685743040964
+    },
+    "buy_and_hold|zero_costs": {
+     "total_return": 0.016527999596397835,
+     "cagr": 0.028112814438896017,
+     "sharpe": 0.24230051421603083,
+     "sortino": 0.23277596307046608,
+     "calmar": 0.1887872423845883,
+     "max_drawdown": -0.14891268119498213,
+     "trades": 200,
+     "win_rate": null,
+     "profit_factor": null,
+     "avg_trade_return_bp": null,
+     "total_costs": 0.0
+    }
+   },
+   "calibration_version": "calibrate-v1:isotonic",
+   "artifact_path": "artifacts/lightgbm-y_5m_10bp-tuned/v1",
+   "status": "CANDIDATE",
+   "created_at": "2026-10-19T07:32:32.226470+00:00",
+   "gates": {
+    "no_leakage": {
+     "status": "PASSED",
+     "evidence": "leakage audit leakage-audit-v1 on dataset-v1-features-v2-labels-v1-u100-s5"
+    },
+    "no_critical_data_quality": {
+     "status": "PASSED",
+     "evidence": "flagged raw rows 21,556 of 720,421,072 (2.99e-05); flagged rows are excluded from canonical; limit 0.001",
+     "flagged_fraction": 2.9921390194983082e-05
+    },
+    "validation_passed": {
+     "status": "PASSED",
+     "evidence": "validation MCC 0.168 (min 0.05, momentum 0.087), balanced accuracy 0.431 (chance 0.333), accuracy 0.480 (majority 0.551)"
+    },
+    "walk_forward_passed": {
+     "status": "PASSED",
+     "evidence": "5 folds: MCC min 0.168, max 0.209, std 0.015 (max 0.05); beats momentum in 5/5"
+    },
+    "calibration_passed": {
+     "status": "PASSED",
+     "evidence": "isotonic calibration, validation classwise ECE 0.013 (max 0.05); raw 0.133"
+    },
+    "reproducible": {
+     "status": "PASSED",
+     "evidence": "refit reproduces 1,101,326/1,101,326 stored validation predictions, max abs diff 2.98e-08 (tol 0.0001); saved model reload diff 0.0e+00"
+    },
+    "backtest_passed": {
+     "status": "FAILED",
+     "evidence": "gated strategy after costs: total return -34.4%, Sharpe -11.35, max DD -34.5%; buy-and-hold 1.5%"
+    },
+    "test_passed": {
+     "status": "NOT_RUN",
+     "evidence": "test period untouched until model development is finished"
+    },
+    "shadow_passed": {
+     "status": "NOT_RUN",
+     "evidence": "no live shadow run yet (Phase 17-18)"
+    }
+   },
+   "accuracy_gate": "NOT VERIFIED",
+   "source_experiments": {
+    "walk_forward": "20261018T181358-p9-wf-expanding-lightgbm-y_5m_10bp-tuned-1a2aa277",
+    "calibration": "20261019T065339-p10-calibration-lightgbm-y_5m_10bp-tuned-49032197",
+    "backtest": "20261019T071859-p12-backtest-lightgbm-y_5m_10bp-tuned-44283219"
+   },
+   "notes": [
+    "Decisions use the raw tuned probabilities (argmax); calibrated probabilities are for display (Phase 10: calibrated argmax lowers MCC).",
+    "Accuracy target (70-80%) not reached; spec section 39 verdict NOT VERIFIED."
+   ],
+   "history": [
+    {
+     "at": "2026-10-19T07:32:32.226470+00:00",
+     "from": null,
+     "to": "EXPERIMENT",
+     "reason": "exported from 20261018T181358-p9-wf-expanding-lightgbm-y_5m_10bp-tuned-1a2aa277"
+    },
+    {
+     "at": "2026-10-19T07:32:32.240933+00:00",
+     "from": "EXPERIMENT",
+     "to": "CANDIDATE",
+     "reason": "all CANDIDATE gates passed"
+    }
+   ]
+  }
+ ]
+}

@@ -185,6 +185,28 @@ def cmd_backtest(args: argparse.Namespace) -> None:
     print(f"{len(rows)} backtest experiments written")
 
 
+def cmd_registry(args: argparse.Namespace) -> None:
+    from pulsetrader.experiments.register import DEFAULT_INPUTS, render, run
+    from pulsetrader.registry.registry import Registry
+
+    p = data_paths()
+    reg = Registry(p.root / "registry")
+    reports = Path(args.reports)
+    if args.action == "register":
+        recs = run(p.root, reports, tuple(args.inputs or DEFAULT_INPUTS))
+        for r in recs:
+            print(f"{r.key}: {r.status}")
+    elif args.action == "transition":
+        if not (args.model_id and args.version and args.to and args.reason):
+            raise SystemExit("transition needs --model-id --version --to --reason")
+        r = reg.transition(args.model_id, args.version, args.to, args.reason)
+        print(f"{r.key}: {r.status}")
+    for r in reg.models():
+        print(f"{r.key:45s} {r.status:10s} task={r.task} val_mcc={r.metrics['validation']['mcc']:.3f}")
+    reports.mkdir(parents=True, exist_ok=True)
+    (reports / "model_registry.md").write_text(render(reg.models()))
+
+
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     ap = argparse.ArgumentParser(prog="pulsetrader")
@@ -233,6 +255,15 @@ def main() -> None:
     bt = sub.add_parser("backtest", help="Phase 12: portfolio backtests vs buy-and-hold, naive, momentum")
     bt.add_argument("--reports", default="../reports")
     bt.set_defaults(func=cmd_backtest)
+    rg = sub.add_parser("registry", help="Phase 13: model registry (register, list, transition)")
+    rg.add_argument("action", choices=["register", "list", "transition"])
+    rg.add_argument("--inputs", nargs="*", help="e.g. lightgbm-y_5m_10bp-tuned")
+    rg.add_argument("--model-id")
+    rg.add_argument("--version", type=int)
+    rg.add_argument("--to")
+    rg.add_argument("--reason")
+    rg.add_argument("--reports", default="../reports")
+    rg.set_defaults(func=cmd_registry)
     au = sub.add_parser("audit", help="Phase 6: leakage gate on real data for a built dataset")
     au.add_argument("--name", default="core100_s5")
     au.add_argument("--reports", default="../reports")
