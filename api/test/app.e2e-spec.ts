@@ -427,7 +427,13 @@ describe('PulseTrader API (e2e, real PostgreSQL)', () => {
     // request latency is recorded per route pattern
     const lat = (await http().get('/api/monitoring').expect(200)).body.components.api;
     expect(lat.requests).toBeGreaterThan(0);
-    expect(lat.slowestRoutes.map((x: { route: string }) => x.route)).toContain('POST /api/live/monitoring');
+    // which routes are slowest depends on the machine; check they are recorded as patterns, not raw paths
+    const routes = lat.slowestRoutes.map((x: { route: string }) => x.route) as string[];
+    expect(routes.length).toBeGreaterThan(0);
+    for (const route of routes) {
+      expect(route).toMatch(/^(GET|POST|PUT|PATCH|DELETE) \/api\//);
+      expect(route).not.toMatch(/[0-9a-f]{8}-[0-9a-f]{4}-/); // ids are replaced by :params
+    }
     await prisma.monitoringReport.deleteMany({});
     await prisma.systemAlert.deleteMany({});
   });
