@@ -1,21 +1,19 @@
 # knowledge.md — PulseTrader V4 project state
 
-Last updated: 2026-10-19 (phase 17 done).
+Last updated: 2026-10-19 (phase 18 done).
 
 ## Current phase
-Phases 0–17 DONE on real data (Phase 17 finished 2026-10-19). Next: Phase 18 (live paper evaluation).
+Phases 0–18 DONE on real data (Phase 18 finished 2026-10-19). Next: Phase 19 (monitoring).
 
 ## Next exact action
-1. Phase 18 (live paper evaluation, spec section 48): after each prediction horizon compute actual price,
-   actual return, prediction error and direction correctness (PredictionOutcome rows) for LIVE and
-   REPLAY predictions; rolling 20/50/100/500, daily/weekly/monthly accuracy plus MCC, balanced accuracy,
-   coverage and calibration; paper portfolio driven by live predictions. Outcomes come from the same
-   validated bars the pipeline caches (replay: canonical bars), never from a different source.
-   Real LIVE needs the user's Kite Connect key/secret + daily access token and network access to
-   api.kite.trade / ws.kite.trade (both blocked here); until then evaluate on replayed validation days,
-   always labelled REPLAY. Local stack: `service postgresql start; redis-server --daemonize yes`; ML :8000,
-   API :3001 (`TRUST_PROXY=1 LIVE_INGEST_TOKEN=... node dist/main.js`), web :3000 (docs/frontend.md),
-   replay: docs/live-data.md.
+1. Phase 19 (monitoring, spec sections 48-50): drift and health monitoring on top of the Phase 18
+   outcomes: feature drift (PSI/KS vs training) per feature from live feature rows, prediction/confidence
+   drift, rolling live accuracy/MCC/coverage vs validation with alert thresholds, feed health history,
+   API/ML latency and error rates; surface on the dashboard and as alerts. Keep LIVE and REPLAY separate.
+   Real LIVE still needs the user's Kite Connect key/secret + daily access token and network access to
+   api.kite.trade / ws.kite.trade (both blocked here). Local stack: `service postgresql start;
+   redis-server --daemonize yes`; ML :8000, API :3001 (`AUTH_RATE_LIMIT_PER_MINUTE=40 TRUST_PROXY=1
+   LIVE_INGEST_TOKEN=... node dist/main.js`), web :3000 (docs/frontend.md), replay: docs/live-data.md.
 2. If the container was recycled, data/ is gone: torch needs `pip install torch --index-url
    https://download.pytorch.org/whl/cpu`, then `pulsetrader fetch`, `pipeline`, `security`, `dataset`
    (~35 min), then `pulsetrader optimize --steps W` / `T` to recreate Phase 9 predictions.
@@ -211,6 +209,30 @@ optional SL/TP, 10 positions x 10% equity, one per symbol, Indian intraday charg
 - Tests: ML 95 (13 new: Kite packets, candles, validation, feed states, providers, golden replay parity,
   Mock ticks -> bars -> features parity); API 21 unit + 13 e2e (new live ingestion test); web 13 unit.
 
+## Phase 18 results (DONE 2026-10-19) — docs/live-data.md, reports/phase18_live_eval.{md,json}
+- ml live/outcomes.py: OutcomeTracker scores every prediction after its horizon with `add_labels` on the
+  bars the pipeline received (same definition as training labels); target after the close -> null label.
+  direction_correct only for UP/DOWN calls (actual NEUTRAL = wrong). Outcomes go to all sinks
+  (API `POST /api/live/outcomes`, `<out>.outcomes.jsonl`). live/evaluate.py: per model+mode full-coverage
+  acc/BA/MCC/Brier/ECE (raw+calibrated), selective calls/coverage/acc/BA/MCC, rolling 20/50/100/500,
+  daily/weekly/monthly, per-call paper P&L after 10.24 bp round-trip costs (upper bound, not a backtest).
+  CLI `live-eval --last N`.
+- REPLAY of the last 20 validation sessions (2025-05-19..2025-06-13, 300k predictions): outcomes equal
+  research labels on every row (class match 1.0, return diff <2e-9); probabilities vs walk-forward max diff
+  1.8e-5 (5m) and 1.7e-3 (1m).
+  | model | full acc | BA | MCC | ECE raw->cal | calls | coverage | call acc | call BA | call MCC | net bp/call |
+  | 1m_5bp | 0.585 | 0.451 | 0.206 | 0.089->0.043 | 47 | 0.03% | 0.404 | 0.294 | -0.133 | -13.7 |
+  | 5m_10bp | 0.568 | 0.436 | 0.188 | 0.089->0.032 | 401 | 0.27% | 0.431 | 0.422 | 0.163 | -6.4 |
+  The confidence-gated calls are NOT more accurate than the full argmax (the gate picks rare extreme rows;
+  many end NEUTRAL). 5m calls get the sign right 59.9% (+3.9 bp gross) but lose after costs. No 70-80%.
+- API: accuracy endpoint takes mode/model/symbol and returns `performance` (pure performance.ts, unit
+  tested vs scikit-learn; one raw SQL query, latest 20k outcomes, whole IST days only); list has `mode`.
+- Web: Predictions page performance panel with a Mode filter (REPLAY labelled "not live ones") and an
+  outcome column. Verified end to end with 2025-06-12/13 replayed into the local API.
+- Tests: ML 97, API 26 unit + 13 e2e, web 13 unit + 12 e2e.
+- Note: each replay run creates new prediction ids, so replaying the same day twice into the API
+  duplicates predictions; delete old REPLAY rows first (local data only).
+
 ## Architecture
 - `ml/src/pulsetrader/`: config, data/{schema,validate,io,discovery,pipeline},
   security/{lists,master}, features/{engine,preprocess}, labels/labels, splits/splits, eval/metrics,
@@ -262,7 +284,8 @@ optional SL/TP, 10 positions x 10% equity, one per symbol, Indian intraday charg
 | 15 Backend | DONE 2026-10-19: NestJS + Prisma, seeded with real data |
 | 16 Frontend | DONE 2026-10-19: Next.js dashboard, 11 e2e flows on the real stack |
 | 17 Live market system | DONE 2026-10-19: Kite adapter + replay; live features/predictions match research exactly |
-| 18–20 | NOT STARTED |
+| 18 Live paper evaluation | DONE 2026-10-19: REPLAY of 20 validation sessions; outcomes match labels exactly; gated calls 40-43% accurate, lose after costs |
+| 19–20 | NOT STARTED |
 
 ## Known issues
 - No Kite Connect credentials yet and api.kite.trade / ws.kite.trade are blocked by this environment's
@@ -271,5 +294,5 @@ optional SL/TP, 10 positions x 10% equity, one per symbol, Indian intraday charg
 - Instrument classification of 8 tickers is uncertain (listed in reports/security_master.md).
 
 ## Commands
-See AGENTS.md. From ml/: `PULSETRADER_DATA_DIR=../data .venv/bin/pulsetrader {fetch,discover,pipeline,security,dataset,audit,classical,deep,optimize,calibrate,robustness}`.
-Tests: `.venv/bin/pytest` (95 passed on 2026-10-19). api/: `npm test`, `npm run test:e2e`. web/: `npm test`, `npm run test:e2e` (docs/frontend.md).
+See AGENTS.md. From ml/: `PULSETRADER_DATA_DIR=../data .venv/bin/pulsetrader {fetch,discover,pipeline,security,dataset,audit,classical,deep,optimize,calibrate,robustness,live,live-parity,live-eval}`.
+Tests: `.venv/bin/pytest` (97 passed on 2026-10-19). api/: `npm test`, `npm run test:e2e`. web/: `npm test`, `npm run test:e2e` (docs/frontend.md).
