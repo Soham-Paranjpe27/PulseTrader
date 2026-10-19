@@ -24,6 +24,8 @@ services:
     volumes:
       - ./data/registry:/data/registry:ro
       - ./data/datasets:/data/datasets:ro
+      - ./data/canonical:/data/canonical:ro   # minute bars + indicators for the dashboard
+      - ./data/reference:/data/reference:ro   # daily index bars (market regime)
     ports: ["8000:8000"]
   api:
     build: ./api
@@ -34,10 +36,18 @@ services:
       ML_SERVICE_URL: http://ml-service:8000
       WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:3000}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      TRUST_PROXY: 1   # requests arrive through the web app's same-origin proxy
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
       ml-service: { condition: service_started }
     ports: ["3001:3001"]
+  web:
+    build: ./web
+    environment:
+      API_URL: http://api:3001
+    depends_on:
+      api: { condition: service_healthy }
+    ports: ["3000:3000"]
 volumes:
   pgdata:

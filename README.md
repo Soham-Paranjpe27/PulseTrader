@@ -12,7 +12,8 @@ ml/            Python package `pulsetrader`: data pipeline, feature engine, labe
 data/          raw (immutable) and derived datasets — git-ignored
 reports/       generated data inventory and quality reports
 docs/          design and audit documents
-apps/          backend (NestJS) and frontend (Next.js) — later phases
+api/           NestJS backend (Prisma/PostgreSQL, Redis, JWT cookies)
+web/           Next.js dashboard (docs/frontend.md)
 experiments/   one directory per experiment, never overwritten
 ```
 
@@ -20,6 +21,6 @@ experiments/   one directory per experiment, never overwritten
 ```
 cd ml && python -m venv .venv && .venv/bin/pip install -e ".[dev,serve,fetch]"
 .venv/bin/pytest
-docker compose up -d postgres redis ml-service   # from repo root
+docker compose up -d   # from repo root: postgres, redis, ml-service, api, web (:3000)
 ```
 Copy `.env.example` to `.env` for secrets. Never commit `.env`.

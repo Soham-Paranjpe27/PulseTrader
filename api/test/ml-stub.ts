@@ -108,6 +108,12 @@ export async function startMlStub(): Promise<MlStub> {
       if (path === '/ready') return send(200, { ready: true, reason: 'NO_PRODUCTION_MODEL' });
       if (path.startsWith('/bars/'))
         return send(200, { symbol: 'RELIANCE', date: '2025-01-06', bars: [{ ts: 'x', close: 1 }] });
+      if (path.startsWith('/indicators/')) {
+        // minute data ends a session before the daily bars (as in the real dataset)
+        if (!path.endsWith('date=2025-01-02'))
+          return send(404, { detail: { code: 'DATA_UNAVAILABLE', message: `no bars ${path}` } });
+        return send(200, { symbol: 'RELIANCE', date: '2025-01-02', latest: [{ name: 'rsi_14', value: 55 }] });
+      }
       return send(404, { detail: { code: 'NOT_FOUND', message: path } });
     })();
   });

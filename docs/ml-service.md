@@ -5,7 +5,8 @@ Code: `ml/src/pulsetrader/serve/{app,models,store,parity}.py`. Run:
 cd ml && PULSETRADER_DATA_DIR=../data .venv/bin/uvicorn pulsetrader.serve.app:app --port 8000
 PULSETRADER_DATA_DIR=../data .venv/bin/pulsetrader serve-check   # parity check -> reports/phase14_inference.md
 ```
-Docker: `docker compose up ml-service` mounts `data/registry` and `data/datasets` read-only.
+Docker: `docker compose up ml-service` mounts `data/registry`, `data/datasets`, `data/canonical` and
+`data/reference` read-only.
 
 ## Environment
 | Variable | Default | Meaning |
@@ -26,6 +27,8 @@ Docker: `docker compose up ml-service` mounts `data/registry` and `data/datasets
 | GET | /models/active | PRODUCTION models (empty with a reason when none) |
 | GET | /features | per model: feature order, training median/mean/std, missing-value rule, fit period |
 | GET | /metrics | requests, errors, directions, abstentions, coverage, latency p50/p95/p99 |
+| GET | /bars/{symbol}?date= | 1-minute canonical bars of one session (charts; no labels) |
+| GET | /indicators/{symbol}?date= | shared-feature-engine indicators for one session (latest values + series) and the NIFTY market regime (Phase 16) |
 
 ## Request
 ```json

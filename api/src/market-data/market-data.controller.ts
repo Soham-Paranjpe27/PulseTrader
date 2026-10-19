@@ -20,7 +20,12 @@ export class MarketDataController {
   }
 
   @Get(':symbol/intraday')
-  intraday(@Param('symbol') symbol: string, @Query('date') date: string) {
+  intraday(@Param('symbol') symbol: string, @Query('date') date?: string) {
     return this.md.intraday(symbol.toUpperCase(), date);
+  }
+
+  @Get(':symbol/indicators')
+  indicators(@Param('symbol') symbol: string, @Query('date') date?: string) {
+    return this.md.indicators(symbol.toUpperCase(), date);
   }
 }

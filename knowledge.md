@@ -1,17 +1,20 @@
 # knowledge.md — PulseTrader V4 project state
 
-Last updated: 2026-10-19 (phase 15 done).
+Last updated: 2026-10-19 (phase 16 done).
 
 ## Current phase
-Phases 0–15 DONE on real data (Phase 15 finished 2026-10-19). Next: Phase 16 (Next.js frontend).
+Phases 0–16 DONE on real data (Phase 16 finished 2026-10-19). Next: Phase 17 (live market system).
 
 ## Next exact action
-1. Phase 16 (frontend): Next.js App Router + TypeScript + Tailwind + shadcn/ui + TanStack Query +
-   Zustand + React Hook Form + Zod + lightweight-charts in web/. Pages: /, login, register, dashboard,
-   stocks, stocks/[symbol] (spec section 57 fields), predictions, watchlist, portfolio, alerts, research,
-   settings. Talks to the API (docs/backend.md) with cookies + x-csrf-token. Show research_only /
-   NO_PRODUCTION_MODEL / DISCONNECTED honestly. E2E (Playwright, Chromium at /opt/pw-browsers).
-   Local stack: `service postgresql start; redis-server --daemonize yes`; ML service on :8000, API on :3001.
+1. Phase 17 (live market system): MarketDataProvider (Historical / Live / Snapshot / Mock test-only),
+   streaming gateway, validation (LIVE / DELAYED / STALE / DISCONNECTED / INVALID), candle aggregator,
+   shared feature engine on live bars (features.engine.compute_symbol_features, as /indicators does),
+   inference through the ML service `features` input, prediction store, SSE to the dashboard.
+   No authorised provider or credentials exist in this environment (nseindia.com blocked): build against
+   the provider interface and replay recorded canonical sessions through HistoricalProvider; the feed must
+   never be reported LIVE from a replay. Ask the user which provider to use for real LIVE mode.
+   Local stack: `service postgresql start; redis-server --daemonize yes`; ML :8000, API :3001
+   (`TRUST_PROXY=1 node dist/main.js`), web :3000 (docs/frontend.md).
 2. If the container was recycled, data/ is gone: torch needs `pip install torch --index-url
    https://download.pytorch.org/whl/cpu`, then `pulsetrader fetch`, `pipeline`, `security`, `dataset`
    (~35 min), then `pulsetrader optimize --steps W` / `T` to recreate Phase 9 predictions.
@@ -164,6 +167,24 @@ optional SL/TP, 10 positions x 10% equity, one per symbol, Indian intraday charg
   services) and docker build api. npm audit --omit=dev: 0 (overrides js-yaml ^5.4.1, deepmerge-ts ^8);
   dev-only `braces` advisory remains.
 
+## Phase 16 results (DONE 2026-10-19) — docs/frontend.md
+- web/: Next.js 15.5 App Router, React 19.1, Tailwind 4.1, shadcn-style components, TanStack Query 5,
+  Zustand 5, RHF 7 + Zod 3, lightweight-charts 5.0 (pinned exact). All 12 spec pages. Same-origin
+  `/api` proxy route (API_URL at runtime, standalone output, Dockerfile, compose `web` service).
+- Stock detail covers all section 57 fields. Indicators come from a new ML endpoint
+  `GET /indicators/{symbol}?date` (shared feature engine on the session + 5 prior sessions; parity vs the
+  research dataset max abs diff 6.5e-6 on RELIANCE 2025-01-06) plus the Phase 11 NIFTY regime. API
+  proxies it as `/api/market-data/:symbol/indicators` (no date: latest session with minute data).
+- Honest states shown: CANDIDATE / RESEARCH ONLY, NO_PRODUCTION_MODEL notice built from the gates,
+  feed DISCONNECTED, TEST_PERIOD_LOCKED, DATA_UNAVAILABLE for accuracy until outcomes exist.
+- Fixed while testing: refresh-token retry must send x-csrf-token (API checks CSRF on /auth/refresh);
+  lightweight-charts fails to draw when the browser locale is invalid (headless `en-US@posix`), so the
+  chart sets `en-IN` and Playwright runs with locale en-IN.
+- Tests: web 13 unit (Playwright runner, no browser) + 11 browser e2e on the real stack, all pass
+  (e2e not in CI: needs dataset + artifacts). ML 82 pass (new indicators test), API 21 unit + 12 e2e
+  (new indicators fallback test). npm audit --omit=dev 0 for web (postcss override).
+- API: `TRUST_PROXY` env (hops) so throttling/audit see client IPs behind the web proxy.
+
 ## Architecture
 - `ml/src/pulsetrader/`: config, data/{schema,validate,io,discovery,pipeline},
   security/{lists,master}, features/{engine,preprocess}, labels/labels, splits/splits, eval/metrics,
@@ -173,7 +194,8 @@ optional SL/TP, 10 positions x 10% equity, one per symbol, Indian intraday charg
   registry/registry,
   cli (fetch, discover, pipeline, security, dataset, audit, classical, deep, optimize, calibrate, robustness, backtest, registry, serve-check, export-app).
 - Docker baseline: docker-compose (postgres, redis, ml-service). ml/Dockerfile. CI: .github/workflows/ci.yml.
-- Backend: api/ (NestJS, Phase 15). Frontend (Next.js): not started.
+- Backend: api/ (NestJS, Phase 15). Frontend: web/ (Next.js, Phase 16). ML service also serves /bars and /indicators.
+- Docker: compose services postgres, redis, ml-service, api, web; CI jobs ml, api, web, docker (ml, api, web images).
 
 ## Versions
 - schema `canonical-v1`, processing `pipeline-v2`, security master `secmaster-v1`,
@@ -207,7 +229,12 @@ optional SL/TP, 10 positions x 10% equity, one per symbol, Indian intraday charg
 | 9 Optimisation | DONE 2026-10-18: walk-forward, Optuna, feature selection, ensembles; best val MCC 0.194 (tuned LightGBM y_1m_5bp); reports/phase9_optimization.md |
 | 10 Calibration | DONE 2026-10-19: Platt + isotonic; tuned models need calibration (classwise ECE 0.14 -> 0.02); reports/phase10_calibration.md |
 | 11 Robustness | DONE 2026-10-19: edge broad across stocks/regimes/sectors, weak at the open, shrinking over time, break-even < 2 bp; reports/phase11_robustness.md |
-| 12–20 | NOT STARTED |
+| 12 Backtesting | DONE 2026-10-19: model beats baselines before costs, all intraday strategies lose after ~10 bp costs |
+| 13 Model registry | DONE 2026-10-19: both tuned models CANDIDATE (backtest gate FAILED, test NOT_RUN) |
+| 14 ML inference API | DONE 2026-10-19: FastAPI, parity 3e-8 |
+| 15 Backend | DONE 2026-10-19: NestJS + Prisma, seeded with real data |
+| 16 Frontend | DONE 2026-10-19: Next.js dashboard, 11 e2e flows on the real stack |
+| 17–20 | NOT STARTED |
 
 ## Known issues
 - No market-data provider credentials; live phases will use the provider interface, MockProvider in tests only.
@@ -216,4 +243,4 @@ optional SL/TP, 10 positions x 10% equity, one per symbol, Indian intraday charg
 
 ## Commands
 See AGENTS.md. From ml/: `PULSETRADER_DATA_DIR=../data .venv/bin/pulsetrader {fetch,discover,pipeline,security,dataset,audit,classical,deep,optimize,calibrate,robustness}`.
-Tests: `.venv/bin/pytest` (59 passed on 2026-10-19).
+Tests: `.venv/bin/pytest` (82 passed on 2026-10-19). api/: `npm test`, `npm run test:e2e`. web/: `npm test`, `npm run test:e2e` (docs/frontend.md).

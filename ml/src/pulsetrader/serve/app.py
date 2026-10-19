@@ -1,7 +1,8 @@
 """ML inference service (Phase 14).
 
 Endpoints: GET /health, GET /ready, POST /predict, POST /predict/batch, GET /models,
-GET /models/active, GET /features, GET /metrics.
+GET /models/active, GET /features, GET /metrics, plus GET /bars/{symbol} and
+GET /indicators/{symbol} for the dashboard.
 
 Models come from the registry (`PULSETRADER_REGISTRY_DIR`, default `$PULSETRADER_DATA_DIR/registry`).
 CANDIDATE and SHADOW models are served only when asked for by `model_id`, and every response says
@@ -331,6 +332,23 @@ def bars(symbol: str, date: str) -> dict[str, Any]:
         raise _fail(404, "DATA_UNAVAILABLE", f"no bars for {symbol} on {date}")
     rows = [{**r, "ts": r["ts"].isoformat()} for r in df.iter_rows(named=True)]
     return {"symbol": symbol, "date": date, "count": len(rows), "bars": rows, "source": "canonical-v1"}
+
+
+@app.get("/indicators/{symbol}")
+def indicators(symbol: str, date: str) -> dict[str, Any]:
+    """Shared-feature-engine indicators and market regime for one session (stock detail page)."""
+    import re
+    from datetime import date as date_cls
+
+    from pulsetrader.serve.indicators import IndicatorsUnavailable
+    from pulsetrader.serve.indicators import indicators as compute
+
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", date):
+        raise _fail(422, "BAD_REQUEST", "date must be YYYY-MM-DD")
+    try:
+        return compute(_data_root(), symbol, date_cls.fromisoformat(date))
+    except IndicatorsUnavailable as e:
+        raise _fail(404, "DATA_UNAVAILABLE", str(e)) from e
 
 
 @app.get("/metrics")

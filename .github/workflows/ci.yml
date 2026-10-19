@@ -46,9 +46,26 @@ jobs:
       - run: npm test
       - run: npm run test:e2e
       - run: npm audit --omit=dev --audit-level=moderate
+  web:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: web } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "22", cache: npm, cache-dependency-path: web/package-lock.json }
+      - run: npm ci
+      - run: npm run format:check
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npm audit --omit=dev --audit-level=moderate
+      # browser e2e (e2e/) needs the full stack with the real dataset and model artifacts, which CI
+      # does not have; it runs locally, see docs/frontend.md
   docker:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - run: docker build ml
       - run: docker build api
+      - run: docker build web

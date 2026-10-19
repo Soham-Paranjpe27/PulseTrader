@@ -121,6 +121,14 @@ export class MlClient {
   ): Promise<{ symbol: string; date: string; bars: Record<string, unknown>[] }> {
     return this.request(`/bars/${encodeURIComponent(symbol)}?date=${encodeURIComponent(date)}`);
   }
+
+  indicators(symbol: string, date: string): Promise<Record<string, unknown>> {
+    return this.request(
+      `/indicators/${encodeURIComponent(symbol)}?date=${encodeURIComponent(date)}`,
+      {},
+      20_000,
+    );
+  }
 }
 
 @Global()

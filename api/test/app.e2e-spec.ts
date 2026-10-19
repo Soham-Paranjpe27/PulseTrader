@@ -155,6 +155,12 @@ describe('PulseTrader API (e2e, real PostgreSQL)', () => {
     const daily = await s.get('/api/market-data/RELIANCE/daily?from=2025-01-03').expect(200);
     expect(daily.body.count).toBe(1);
     await s.get('/api/market-data/RELIANCE/daily?from=yesterday').expect(400);
+    // no date: falls back from the latest daily bar to the latest session with minute data
+    const ind = await s.get('/api/market-data/RELIANCE/indicators').expect(200);
+    expect(ind.body.date).toBe('2025-01-02');
+    const miss = await s.get('/api/market-data/RELIANCE/indicators?date=2025-01-03').expect(404);
+    expect(miss.body.code).toBe('DATA_UNAVAILABLE');
+    await s.get('/api/market-data/RELIANCE/indicators?date=bad').expect(400);
   });
 
   it('predictions: CSRF, ML errors passed through, stored, listed, research answers from data', async () => {

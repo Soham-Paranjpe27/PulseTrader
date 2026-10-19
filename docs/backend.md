@@ -18,7 +18,7 @@ npm test && npm run test:e2e                   # e2e needs TEST_DATABASE_URL (ow
 | auth | POST /auth/register, /auth/login, /auth/refresh, /auth/logout; GET /auth/me |
 | users | GET/PATCH /users/me; GET /users (ADMIN) |
 | stocks | GET /stocks?q&type&universe&page&pageSize; GET /stocks/:symbol (quote, latest prediction, recent accuracy, live status) |
-| market-data | GET /market-data/status; /market-data/:symbol/daily?from&to; /market-data/:symbol/intraday?date (ML /bars) |
+| market-data | GET /market-data/status; /market-data/:symbol/daily?from&to; /market-data/:symbol/intraday?date (ML /bars); /market-data/:symbol/indicators?date (ML /indicators). Without `date`: the latest stored session that has minute data |
 | predictions | POST /predictions, /predictions/batch; GET /predictions, /predictions/:id, /predictions/accuracy; SSE /predictions/stream |
 | models | GET /models, /models/active, /models/:id (mirror of the ML registry) |
 | features | GET /features/versions, /features/versions/:v, /features/schema |
@@ -30,6 +30,7 @@ npm test && npm run test:e2e                   # e2e needs TEST_DATABASE_URL (ow
 | admin | POST /admin/sync/registry, /admin/alerts/evaluate; GET /admin/audit (ADMIN) |
 
 ## Behaviour that matters
+- Behind the web app's `/api` proxy set `TRUST_PROXY=1` so throttling and the audit log see client addresses.
 - Predictions come only from the ML service. With no PRODUCTION model, a request without `modelId`
   returns 409 `NO_PRODUCTION_MODEL`; candidate predictions are stored with `researchOnly: true`.
 - Live feed state is `DISCONNECTED` until the Phase 17 pipeline runs; it is never reported LIVE.

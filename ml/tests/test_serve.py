@@ -174,3 +174,20 @@ def test_bars_endpoint(client, served):
     assert set(r.json()["bars"][0]) == {"ts", "open", "high", "low", "close", "volume"}
     assert client.get(f"/bars/{sym}?date=bad").status_code == 422
     assert client.get("/bars/NOPE?date=2024-01-02").json()["detail"]["code"] == "DATA_UNAVAILABLE"
+
+
+def test_indicators_use_shared_engine(client, served):
+    """Dashboard indicators come from the shared feature engine and match the research dataset row."""
+    sym, ts = served["preds"].row(0)[:2]
+    r = client.get(f"/indicators/{sym}?date={ts.date().isoformat()}")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["feature_version"] and body["parity"]["engine"].endswith("compute_symbol_features")
+    assert {x["name"] for x in body["latest"]} >= {"rsi_14", "macd_hist", "vwap_dist"}
+    rsi = {p["ts"]: p["value"] for p in body["series"]["rsi_14"]}
+    want = service.store().lookup(sym, ts)["features"]["rsi_14"]
+    got = rsi[ts.isoformat()]
+    assert want is None or got is None or abs(got - want) < 1e-3 * max(1.0, abs(want))
+    assert body["regime"]["status"] in ("OK", "DATA_UNAVAILABLE")
+    assert client.get(f"/indicators/{sym}?date=2001-01-01").json()["detail"]["code"] == "DATA_UNAVAILABLE"
+    assert client.get(f"/indicators/{sym}?date=x").status_code == 422

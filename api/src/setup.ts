@@ -1,5 +1,6 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
@@ -8,6 +9,10 @@ import helmet from 'helmet';
 export function configureApp(app: INestApplication): void {
   const config = app.get(ConfigService);
   app.setGlobalPrefix('api');
+  // Behind the web app's same-origin proxy (or a load balancer) the client address is in
+  // X-Forwarded-For; TRUST_PROXY = number of trusted hops (unset: trust none).
+  const hops = Number(process.env.TRUST_PROXY ?? 0);
+  if (hops > 0) (app as NestExpressApplication).set('trust proxy', hops);
   app.use(helmet());
   app.use(cookieParser());
   app.enableCors({
