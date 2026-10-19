@@ -1,16 +1,16 @@
 # knowledge.md — PulseTrader V4 project state
 
-Last updated: 2026-10-19 (phase 13 done).
+Last updated: 2026-10-19 (phase 14 done).
 
 ## Current phase
-Phases 0–13 DONE on real data (Phase 13 finished 2026-10-19). Next: Phase 14 (ML inference API).
+Phases 0–14 DONE on real data (Phase 14 finished 2026-10-19). Next: Phase 15 (NestJS backend).
 
 ## Next exact action
-1. Phase 14 (ML inference API): FastAPI endpoints GET /health, /ready, POST /predict, /predict/batch,
-   GET /models, /models/active, /features, /metrics. Load artifacts from data/registry (registry.py);
-   features from the shared engine; decisions from raw probs, calibrated prob reported; abstain
-   (NO_PREDICTION) on low confidence / stale / invalid / OOD input. No PRODUCTION model exists, so
-   /models/active must say so and serving should expose CANDIDATE models flagged research-only.
+1. Phase 15 (backend): NestJS + TypeScript + Prisma/PostgreSQL + JWT httpOnly cookies + Redis +
+   WebSocket/SSE + Swagger, modules auth, users, stocks, market-data, predictions, models, features,
+   watchlist, alerts, portfolio, research, health, admin; entities per spec section 53. Proxies the ML
+   service (docs/ml-service.md) for predictions/models/features. Check node/npm and postgres availability
+   first; integration tests need a database (docker daemon is NOT available in this container).
 2. If the container was recycled, data/ is gone: torch needs `pip install torch --index-url
    https://download.pytorch.org/whl/cpu`, then `pulsetrader fetch`, `pipeline`, `security`, `dataset`
    (~35 min), then `pulsetrader optimize --steps W` / `T` to recreate Phase 9 predictions.
@@ -137,14 +137,25 @@ optional SL/TP, 10 positions x 10% equity, one per symbol, Indian intraday charg
   (refit reproduces stored validation predictions, max diff 3e-8). backtest_passed FAILED,
   test_passed/shadow_passed NOT_RUN, so neither can reach SHADOW/PRODUCTION. Accuracy gate NOT VERIFIED.
 
+## Phase 14 results (DONE 2026-10-19) — reports/phase14_inference.{md,json}, docs/ml-service.md
+- FastAPI: /health /ready /predict /predict/batch /models /models/active /features /metrics, loaded from
+  the registry. HISTORICAL mode reads dataset rows; `features` input for live. Test period -> 403
+  TEST_PERIOD_LOCKED. No PRODUCTION model -> unnamed requests 409 NO_PRODUCTION_MODEL; CANDIDATE
+  models served only by model_id with research_only=true.
+- Parity on 3,000 real validation rows per model (historical and features input): max abs diff 3e-8
+  vs stored Phase 9 predictions. Abstention on that sample: 1m covers 0.1% (4 calls), 5m 0.7% (21 calls),
+  rest LOW_CONFIDENCE, ~0.2% OOD. ~460 rows/s via batch incl. partition loads.
+- Docker: Dockerfile adds libgomp1 (LightGBM); compose mounts data/registry + data/datasets read-only.
+  No docker daemon here; CI runs `docker build ml`.
+
 ## Architecture
 - `ml/src/pulsetrader/`: config, data/{schema,validate,io,discovery,pipeline},
   security/{lists,master}, features/{engine,preprocess}, labels/labels, splits/splits, eval/metrics,
   datasets/build, audit/leakage, eval/multiclass, models/classical,
-  experiments/classical, datasets/sequences, models/deep, experiments/deep, serve/app (health/ready only),
+  experiments/classical, datasets/sequences, models/deep, experiments/deep, serve/{app,models,store,parity},
   experiments/{optimize,calibrate,robustness,backtest,register}, eval/calibration, backtest/engine,
   registry/registry,
-  cli (fetch, discover, pipeline, security, dataset, audit, classical, deep, optimize, calibrate, robustness, backtest, registry).
+  cli (fetch, discover, pipeline, security, dataset, audit, classical, deep, optimize, calibrate, robustness, backtest, registry, serve-check).
 - Docker baseline: docker-compose (postgres, redis, ml-service). ml/Dockerfile. CI: .github/workflows/ci.yml.
 - Backend (NestJS) and frontend (Next.js): not started.
 

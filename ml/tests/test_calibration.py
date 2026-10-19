@@ -74,3 +74,15 @@ def test_calibration_runner_on_golden(golden_dataset, tmp_path):
     assert res["result"]["chosen"] in ("raw", "platt", "isotonic")
     assert res["experiment"]["test_period"]["used"] is False
     assert "Phase 10" in render_summary([res])
+
+
+def test_calibrator_json_roundtrip():
+    from pulsetrader.eval.calibration import Isotonic, Platt, calibrator_from_json
+
+    rng = np.random.default_rng(0)
+    p = rng.dirichlet([2, 3, 2], size=2000)
+    y = np.array([rng.choice(3, p=row) for row in p])
+    for cls in (Platt, Isotonic):
+        c = cls().fit(y, p)
+        back = calibrator_from_json(c.to_json())
+        assert np.allclose(back.transform(p), c.transform(p), atol=1e-9)

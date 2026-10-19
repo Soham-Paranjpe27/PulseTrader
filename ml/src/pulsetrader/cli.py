@@ -207,6 +207,19 @@ def cmd_registry(args: argparse.Namespace) -> None:
     (reports / "model_registry.md").write_text(render(reg.models()))
 
 
+def cmd_serve_check(args: argparse.Namespace) -> None:
+    from pulsetrader.serve.parity import check, render
+
+    p = data_paths()
+    res = check(p.root)
+    reports = Path(args.reports)
+    reports.mkdir(parents=True, exist_ok=True)
+    (reports / "phase14_inference.md").write_text(render(res))
+    (reports / "phase14_inference.json").write_text(json.dumps(res, indent=1, default=str))
+    for m in res["models"]:
+        print(m["model"], "parity", m["parity_passed"], m["historical_max_abs_diff"], m["abstain_reasons"])
+
+
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     ap = argparse.ArgumentParser(prog="pulsetrader")
@@ -264,6 +277,9 @@ def main() -> None:
     rg.add_argument("--reason")
     rg.add_argument("--reports", default="../reports")
     rg.set_defaults(func=cmd_registry)
+    sc = sub.add_parser("serve-check", help="Phase 14: end-to-end inference parity on validation rows")
+    sc.add_argument("--reports", default="../reports")
+    sc.set_defaults(func=cmd_serve_check)
     au = sub.add_parser("audit", help="Phase 6: leakage gate on real data for a built dataset")
     au.add_argument("--name", default="core100_s5")
     au.add_argument("--reports", default="../reports")

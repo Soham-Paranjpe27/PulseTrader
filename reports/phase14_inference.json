@@ -1,0 +1,98 @@
+{
+ "ready": {
+  "ready": true,
+  "reason": "NO_PRODUCTION_MODEL",
+  "production_models": [],
+  "loaded_models": [
+   "lightgbm-y_1m_5bp-tuned@v1",
+   "lightgbm-y_5m_10bp-tuned@v1"
+  ],
+  "historical_mode": true,
+  "load_errors": {}
+ },
+ "models": [
+  {
+   "model": "lightgbm-y_1m_5bp-tuned@v1",
+   "status": "CANDIDATE",
+   "rows": 3000,
+   "seconds": 6.6,
+   "rows_per_second": 454.8,
+   "historical_max_abs_diff": 2.955044953178998e-08,
+   "features_input_max_abs_diff": 2.9370716858601043e-08,
+   "parity_passed": true,
+   "abstain_reasons": {
+    "LOW_CONFIDENCE": 2993,
+    "None": 4,
+    "MODEL_OUT_OF_DISTRIBUTION": 3
+   },
+   "coverage": 0.0013333333333333333,
+   "called": 4,
+   "sign_accuracy_when_called": 1.0,
+   "label_accuracy_when_called": 1.0
+  },
+  {
+   "model": "lightgbm-y_5m_10bp-tuned@v1",
+   "status": "CANDIDATE",
+   "rows": 3000,
+   "seconds": 6.35,
+   "rows_per_second": 472.2,
+   "historical_max_abs_diff": 2.9766312192869293e-08,
+   "features_input_max_abs_diff": 2.9147778968230398e-08,
+   "parity_passed": true,
+   "abstain_reasons": {
+    "LOW_CONFIDENCE": 2971,
+    "None": 21,
+    "MODEL_OUT_OF_DISTRIBUTION": 8
+   },
+   "coverage": 0.007,
+   "called": 21,
+   "sign_accuracy_when_called": 0.38095238095238093,
+   "label_accuracy_when_called": 0.38095238095238093
+  }
+ ],
+ "test_period_locked": {
+  "status_code": 403,
+  "body": {
+   "detail": {
+    "code": "TEST_PERIOD_LOCKED",
+    "message": "TEST_PERIOD_LOCKED: the final test period stays untouched until model development is finished"
+   }
+  }
+ },
+ "no_model_named": {
+  "detail": {
+   "code": "NO_PRODUCTION_MODEL",
+   "message": "NO_PRODUCTION_MODEL: no model has passed the production gates; pass model_id to query a CANDIDATE/SHADOW model (research only)"
+  }
+ },
+ "metrics": {
+  "uptime_seconds": 14.4,
+  "requests": {
+   "predict_batch": 14
+  },
+  "errors": {
+   "TEST_PERIOD_LOCKED": 1,
+   "NO_PRODUCTION_MODEL": 1
+  },
+  "predictions": 6400,
+  "directions": {
+   "NO_PREDICTION": 6374,
+   "UP": 19,
+   "DOWN": 7
+  },
+  "abstentions": {
+   "LOW_CONFIDENCE": 6363,
+   "MODEL_OUT_OF_DISTRIBUTION": 11
+  },
+  "coverage": 0.0040625,
+  "by_model": {
+   "lightgbm-y_1m_5bp-tuned@v1": 3200,
+   "lightgbm-y_5m_10bp-tuned@v1": 3200
+  },
+  "request_latency_ms": {
+   "p50": 1040.745,
+   "p95": 1166.163,
+   "p99": 1166.163
+  }
+ }
+}

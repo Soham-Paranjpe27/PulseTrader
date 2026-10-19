@@ -208,6 +208,31 @@ def export_artifact(
     return {"gate": repro, "info": info}
 
 
+SERVING_DEFAULTS = {
+    "ood_abs_z": 8.0,  # a feature this many training std devs from the training mean is out of range
+    "max_ood_fraction": 0.10,  # more out-of-range features than this -> MODEL_OUT_OF_DISTRIBUTION
+    "max_missing_fraction": 0.10,  # more missing features than this -> FEATURES_INVALID
+}
+
+
+def write_serving_files(art_dir: Path, ds_dir: Path, bt_dir: Path) -> None:
+    """symbols.json (training universe) and serving.json (abstention rules) for the inference API.
+
+    The confidence gate is the Phase 12 gate chosen on pre-validation folds (never on validation/test).
+    """
+    manifest = json.loads((ds_dir / "dataset_manifest.json").read_text())
+    (art_dir / "symbols.json").write_text(json.dumps({"training_universe": manifest["universe"]}))
+    bt_cfg = json.loads((bt_dir / "config.json").read_text())
+    chosen = bt_cfg["gate"]["chosen"]
+    serving = {
+        "min_confidence": float(chosen["gate"]),
+        "min_confidence_source": f"{bt_dir.name}: gate chosen on pre-validation folds "
+        f"(pre-validation net {chosen.get('net_bp_per_call', float('nan')):.2f} bp per call after costs)",
+        **SERVING_DEFAULTS,
+    }
+    (art_dir / "serving.json").write_text(json.dumps(serving, indent=1))
+
+
 # registration --------------------------------------------------------------------------------
 
 
@@ -229,6 +254,7 @@ def register_from_walk_forward(
     version = registry.next_version(model_id)
     art = registry.artifact_dir(model_id, version)
     out = export_artifact(wf_dir, cal_dir, data_root, art, dataset)
+    write_serving_files(art, data_root / "datasets" / dataset, bt_dir)
     v = m["validation"]
     metric_keys = ("accuracy", "balanced_accuracy", "macro_f1", "mcc", "roc_auc_ovr", "brier",
                    "ece_top", "coverage", "n")  # fmt: skip

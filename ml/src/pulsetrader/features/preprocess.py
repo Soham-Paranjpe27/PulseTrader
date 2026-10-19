@@ -55,6 +55,13 @@ class Preprocessor:
         if missing:
             raise PreprocessError(f"missing features {missing[:5]}... ({len(missing)})")
         x = df.select(self.feature_names).to_numpy().astype(np.float64)
+        return self.transform_array(x, scale)
+
+    def transform_array(self, x: np.ndarray, scale: bool = True) -> np.ndarray:
+        """Same transform on a raw matrix already in `feature_names` order (NaN = missing)."""
+        if x.ndim != 2 or x.shape[1] != len(self.feature_names):
+            raise PreprocessError(f"expected {len(self.feature_names)} columns, got {x.shape}")
+        x = x.astype(np.float64)
         med = np.asarray(self.medians)
         x = np.where(np.isnan(x), med, x)
         if scale:

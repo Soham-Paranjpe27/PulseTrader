@@ -120,3 +120,28 @@ def classwise_ece(y: np.ndarray, proba: np.ndarray, n_bins: int = 10) -> float:
         n = sum(c["n"] for c in curve)
         total += sum(c["n"] / n * abs(c["observed"] - c["mean_predicted"]) for c in curve)
     return float(total / proba.shape[1])
+
+
+def calibrator_from_json(d: dict[str, Any]) -> Any:
+    """Rebuild a fitted calibrator's transform from its `to_json()` output (no sklearn needed)."""
+    method = d.get("method")
+    if method == "platt":
+        return Platt(coef=[(float(a), float(b)) for a, b in d["coef"]])
+    if method == "isotonic":
+        return IsotonicTable([(np.asarray(t["x"]), np.asarray(t["y"])) for t in d["thresholds"]])
+    if method == "raw":
+        return None
+    raise ValueError(f"unknown calibration method {method}")
+
+
+@dataclass
+class IsotonicTable:
+    """Isotonic step functions stored as thresholds; identical to IsotonicRegression.predict with
+    out_of_bounds='clip' (linear interpolation between thresholds, clipped at the ends)."""
+
+    tables: list[tuple[np.ndarray, np.ndarray]]
+    name: str = "isotonic"
+
+    def transform(self, proba: np.ndarray) -> np.ndarray:
+        cols = [np.interp(proba[:, k], x, y) for k, (x, y) in enumerate(self.tables)]
+        return _renorm(np.column_stack(cols))
