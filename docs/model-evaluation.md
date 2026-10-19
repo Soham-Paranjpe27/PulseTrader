@@ -30,3 +30,12 @@ precision and recall per direction.
   config.json, metrics.json, feature_importance.json, report.md, predictions.parquet, preprocessor.json.
 - Baselines: majority, stratified random, no-change (naive price), always-up (buy-and-hold view),
   momentum (class of the past return over the same horizon, same threshold).
+
+## Calibration (Phase 10)
+`eval/calibration.py`: one-vs-rest Platt (logistic on logit p) and isotonic, renormalised to sum to 1.
+`experiments/calibrate.py` (`pulsetrader calibrate`) fits them on Phase 9 out-of-fold predictions:
+- The method is chosen by Brier on the last pre-validation fold.
+- The chosen method is then refit on all pre-validation folds and applied to validation.
+- Reported: Brier, log loss, top-class ECE, classwise ECE, and reliability curves (top class and per class).
+- Stored: raw_probability and <method>_probability. Calibration can change argmax decisions, so the
+  class decision rule is kept separate from the reported probability.

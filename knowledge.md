@@ -3,17 +3,16 @@
 Last updated: 2026-10-17 18:45 UTC (phase 8 paused).
 
 ## Current phase
-Phases 0–9 DONE on real data (Phase 9 finished 2026-10-18). Next: Phase 10 (calibration).
+Phases 0–10 DONE on real data (Phase 10 finished 2026-10-19). Next: Phase 11 (robustness).
 
 ## Next exact action
-1. Phase 10 (calibration): Platt and isotonic on the tuned LightGBM y_1m_5bp / y_5m_10bp models, fit on
-   out-of-fold walk-forward predictions (folds F1-F4), scored on validation (F5): Brier, ECE,
-   reliability curve; store raw and calibrated probability. Test period stays unused.
-2. Tuned params: `data/experiments/*-p9-optuna-lightgbm-<label>-*/metrics.json` (`best_params`), also in
-   reports/phase9_optimization.json.
-3. If the container was recycled, data/ is gone: torch needs `pip install torch --index-url
+1. Phase 11 (robustness): evaluate the tuned LightGBM y_1m_5bp / y_5m_10bp walk-forward predictions by
+   regime (NIFTY trend/volatility), sector (not available offline: use symbol groups), symbol, volatility
+   bucket, time of day, and cost sensitivity (sign accuracy vs round-trip cost). Inputs: Phase 9/10
+   predictions.parquet in data/experiments. Validation + pre-validation folds only; test unused.
+2. If the container was recycled, data/ is gone: torch needs `pip install torch --index-url
    https://download.pytorch.org/whl/cpu`, then `pulsetrader fetch`, `pipeline`, `security`, `dataset`
-   (~35 min). Phase 7-9 metrics are in reports/*.json.
+   (~35 min), then `pulsetrader optimize --steps W` / `T` to recreate Phase 9 predictions.
 
 ## Environment
 4 CPU, ~15 GB RAM, ~252 GB disk but ~12 GB free after data, no GPU. Python 3.13 venv in ml/.venv.
@@ -102,6 +101,14 @@ Purge (train label end <= window start), 60-min embargo, preprocessor fit per wi
 - Selective UP/DOWN (threshold chosen OOF): ~4-5% coverage, sign accuracy 51-54%. Gate: NOT VERIFIED.
 - Lesson: loading a new horizon while the previous DevData lives exceeds 15 GB; `_free(dev)` between horizons.
 
+## Phase 10 results (calibrate-v1, DONE 2026-10-19) — reports/phase10_calibration.md
+Calibrators fit on Phase 9 OOF folds F1-F4 (method chosen by Brier on F4 after fitting on F1-F3), applied to F5.
+- Default LightGBM already calibrated (top-class ECE 0.006-0.013); calibration changes Brier < 0.001.
+- Tuned (balanced-weight) LightGBM: classwise ECE 0.13-0.14 -> 0.012-0.019; Brier 0.601 -> 0.532 (1m).
+  Isotonic chosen everywhere; Platt within 0.001 Brier. Argmax of calibrated probs reverts to default
+  behaviour (MCC 0.194 -> 0.165), so decisions use raw tuned output / class bias, reported probability = calibrated.
+- High-confidence (top prob >= 0.7) rows are ~all NEUTRAL (acc 81-90%); directional P>=0.5 covers 0.3%, sign acc 57%.
+
 ## Architecture
 - `ml/src/pulsetrader/`: config, data/{schema,validate,io,discovery,pipeline},
   security/{lists,master}, features/{engine,preprocess}, labels/labels, splits/splits, eval/metrics,
@@ -141,7 +148,8 @@ Purge (train label end <= window start), 60-min embargo, preprocessor fit per wi
 | 7 Classical ML | DONE (reports/phase7_classical.md); no model verified, see Phase 7 results |
 | 8 Deep learning | DONE 2026-10-18: transformer L120 ties GBM (best MCC 0.167 on y_1m_5bp); reports/phase8_deep.md |
 | 9 Optimisation | DONE 2026-10-18: walk-forward, Optuna, feature selection, ensembles; best val MCC 0.194 (tuned LightGBM y_1m_5bp); reports/phase9_optimization.md |
-| 10–20 | NOT STARTED |
+| 10 Calibration | DONE 2026-10-19: Platt + isotonic; tuned models need calibration (classwise ECE 0.14 -> 0.02); reports/phase10_calibration.md |
+| 11–20 | NOT STARTED |
 
 ## Known issues
 - No market-data provider credentials; live phases will use the provider interface, MockProvider in tests only.
@@ -149,5 +157,5 @@ Purge (train label end <= window start), 60-min embargo, preprocessor fit per wi
 - Instrument classification of 8 tickers is uncertain (listed in reports/security_master.md).
 
 ## Commands
-See AGENTS.md. From ml/: `PULSETRADER_DATA_DIR=../data .venv/bin/pulsetrader {fetch,discover,pipeline,security,dataset,audit,classical,deep,optimize}`.
-Tests: `.venv/bin/pytest` (54 passed on 2026-10-18).
+See AGENTS.md. From ml/: `PULSETRADER_DATA_DIR=../data .venv/bin/pulsetrader {fetch,discover,pipeline,security,dataset,audit,classical,deep,optimize,calibrate}`.
+Tests: `.venv/bin/pytest` (57 passed on 2026-10-19).

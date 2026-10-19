@@ -145,6 +145,20 @@ def cmd_optimize(args: argparse.Namespace) -> None:
     print(f"{len(results)} experiments written to {out}")
 
 
+def cmd_calibrate(args: argparse.Namespace) -> None:
+    from pulsetrader.experiments.calibrate import DEFAULT_INPUTS, render_summary, run
+
+    p = data_paths()
+    out = p.root / "experiments"
+    rows = run(out, tuple(args.inputs.split(",")) if args.inputs else DEFAULT_INPUTS)
+    reports = Path(args.reports)
+    reports.mkdir(parents=True, exist_ok=True)
+    (reports / "phase10_calibration.md").write_text(render_summary(rows))
+    slim = [{"experiment": r["experiment"], "result": r["result"]} for r in rows]
+    (reports / "phase10_calibration.json").write_text(json.dumps(slim, indent=1, default=str))
+    print(f"{len(rows)} calibration experiments written to {out}")
+
+
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     ap = argparse.ArgumentParser(prog="pulsetrader")
@@ -183,6 +197,10 @@ def main() -> None:
     op.add_argument("--trials", type=int, default=25)
     op.add_argument("--phase7", default="../reports/phase7_classical.json")
     op.set_defaults(func=cmd_optimize)
+    ca = sub.add_parser("calibrate", help="Phase 10: Platt / isotonic on walk-forward predictions")
+    ca.add_argument("--inputs", default="", help="comma-separated Phase 9 walk-forward experiment names")
+    ca.add_argument("--reports", default="../reports")
+    ca.set_defaults(func=cmd_calibrate)
     au = sub.add_parser("audit", help="Phase 6: leakage gate on real data for a built dataset")
     au.add_argument("--name", default="core100_s5")
     au.add_argument("--reports", default="../reports")
