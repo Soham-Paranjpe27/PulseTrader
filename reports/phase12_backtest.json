@@ -1,0 +1,964 @@
+[
+ {
+  "experiment": {
+   "experiment_id": "20261019T071756-p12-backtest-lightgbm-y_1m_5bp-tuned-0fc4de4f",
+   "runner_version": "backtest-v1",
+   "phase": 12,
+   "dataset_id": "dataset-v1-features-v2-labels-v1-u100-s5",
+   "dataset": "core100_s5",
+   "train_period": {
+    "name": "train",
+    "start": "2022-01-03",
+    "end": "2024-11-04"
+   },
+   "validation_period": {
+    "name": "validation",
+    "start": "2024-11-05",
+    "end": "2025-06-13"
+   },
+   "test_period": {
+    "name": "test",
+    "start": "2025-06-16",
+    "end": "2026-01-21",
+    "used": false
+   },
+   "config": {
+    "step": "backtest",
+    "source_experiment": "20261018T192847-p9-wf-expanding-lightgbm-y_1m_5bp-tuned-cc45c314",
+    "label": "y_1m_5bp",
+    "model": "lightgbm",
+    "tag": "tuned",
+    "horizon": 1,
+    "threshold": 0.0005,
+    "engine": {
+     "capital": 1000000.0,
+     "position_frac": 0.1,
+     "max_positions": 10,
+     "horizon": 1,
+     "stop_loss_bp": null,
+     "take_profit_bp": null,
+     "costs": {
+      "brokerage_bp": 3.0,
+      "brokerage_cap_inr": 20.0,
+      "stt_sell_bp": 2.5,
+      "exchange_bp": 0.297,
+      "sebi_bp": 0.01,
+      "stamp_buy_bp": 0.3,
+      "gst_rate": 0.18,
+      "slippage_bp": 1.0
+     }
+    },
+    "round_trip_cost_bp": 10.24452,
+    "gate": {
+     "chosen": {
+      "gate": 0.6,
+      "coverage": 0.006820476610542685,
+      "net_bp_per_call": -1.9701091990892028
+     },
+     "grid": [
+      {
+       "gate": 0.34,
+       "coverage": 0.44902757340160826,
+       "net_bp_per_call": -9.054082232135283
+      },
+      {
+       "gate": 0.36,
+       "coverage": 0.4306455182777675,
+       "net_bp_per_call": -9.011065204012052
+      },
+      {
+       "gate": 0.38,
+       "coverage": 0.3921018204734213,
+       "net_bp_per_call": -8.932066525173255
+      },
+      {
+       "gate": 0.4,
+       "coverage": 0.3383458382846052,
+       "net_bp_per_call": -8.814336642004244
+      },
+      {
+       "gate": 0.42,
+       "coverage": 0.2768687423418734,
+       "net_bp_per_call": -8.652304293078243
+      },
+      {
+       "gate": 0.44,
+       "coverage": 0.21538463010411543,
+       "net_bp_per_call": -8.44954132944688
+      },
+      {
+       "gate": 0.46,
+       "coverage": 0.1592619240339359,
+       "net_bp_per_call": -8.182590652367953
+      },
+      {
+       "gate": 0.48,
+       "coverage": 0.11074488177223958,
+       "net_bp_per_call": -7.800422285425071
+      },
+      {
+       "gate": 0.5,
+       "coverage": 0.0732791420219304,
+       "net_bp_per_call": -7.302007846920198
+      },
+      {
+       "gate": 0.52,
+       "coverage": 0.046710027369929054,
+       "net_bp_per_call": -6.66528150410883
+      },
+      {
+       "gate": 0.54,
+       "coverage": 0.029046185718777966,
+       "net_bp_per_call": -5.8304669494336565
+      },
+      {
+       "gate": 0.56,
+       "coverage": 0.017786945736612114,
+       "net_bp_per_call": -4.781681721232686
+      },
+      {
+       "gate": 0.58,
+       "coverage": 0.010988793701153032,
+       "net_bp_per_call": -3.4777639090955024
+      },
+      {
+       "gate": 0.6,
+       "coverage": 0.006820476610542685,
+       "net_bp_per_call": -1.9701091990892028
+      }
+     ]
+    },
+    "period": {
+     "start": "2024-11-05",
+     "end": "2025-06-13",
+     "fold": "F5"
+    }
+   },
+   "created_at": "2026-10-19T07:17:56.169509+00:00"
+  },
+  "result": {
+   "model|costs": {
+    "days": 149,
+    "start_equity": 1000000.0,
+    "end_equity": 4.914125025441454,
+    "total_return": -0.9999950858749745,
+    "cagr": -0.9999999989485835,
+    "sharpe": -225.79662553962444,
+    "sortino": -15.835682477492764,
+    "calmar": -1.0000049130977526,
+    "max_drawdown": -0.9999950858749745,
+    "trades": 100327,
+    "win_rate": 0.1101697449340656,
+    "profit_factor": 0.10246524932186904,
+    "avg_trade_return_bp": -12.175187395685885,
+    "median_trade_return_bp": -12.603039696029493,
+    "total_costs": 852495.3450609645,
+    "gross_pnl": -147499.74081401702,
+    "net_pnl": -999995.0858749815,
+    "turnover_per_day": 134.66711409395975,
+    "exposure": 0.1795561521256191,
+    "skipped": {
+     "symbol_held": 0,
+     "book_full": 0,
+     "no_capital": 495620
+    },
+    "exit_reasons": {
+     "horizon": 100327
+    },
+    "signals": 595947
+   },
+   "model|zero_costs": {
+    "days": 149,
+    "start_equity": 1000000.0,
+    "end_equity": 1478812.9346690713,
+    "total_return": 0.47881293466907127,
+    "cagr": 0.9380726123224756,
+    "sharpe": 7.54013839862226,
+    "sortino": 7.5676172182283805,
+    "calmar": 24.49650927098706,
+    "max_drawdown": -0.03829413415377925,
+    "trades": 103611,
+    "win_rate": 0.48513188754089814,
+    "profit_factor": 1.0943974497420113,
+    "avg_trade_return_bp": 0.3793285875149036,
+    "median_trade_return_bp": 0.0,
+    "total_costs": 0.0,
+    "gross_pnl": 478812.93466915656,
+    "net_pnl": 478812.93466915656,
+    "turnover_per_day": 139.0751677852349,
+    "exposure": 0.1854335570473407,
+    "skipped": {
+     "symbol_held": 0,
+     "book_full": 142305,
+     "no_capital": 350031
+    },
+    "exit_reasons": {
+     "horizon": 103611
+    },
+    "signals": 595947
+   },
+   "model_gated|costs": {
+    "days": 149,
+    "start_equity": 1000000.0,
+    "end_equity": 904824.6487036159,
+    "total_return": -0.0951753512963841,
+    "cagr": -0.1556189326818994,
+    "sharpe": -12.611903509190547,
+    "sortino": -9.169755796331682,
+    "calmar": -1.6285825748164713,
+    "max_drawdown": -0.09555483098511997,
+    "trades": 1059,
+    "win_rate": 0.19452313503305005,
+    "profit_factor": 0.19255815562555398,
+    "avg_trade_return_bp": -9.440187268461235,
+    "median_trade_return_bp": -10.36158967158606,
+    "total_costs": 85389.80695016784,
+    "gross_pnl": -9785.544346216891,
+    "net_pnl": -95175.35129638473,
+    "turnover_per_day": 1.421476510067114,
+    "exposure": 0.0018953020134227876,
+    "skipped": {
+     "symbol_held": 0,
+     "book_full": 0,
+     "no_capital": 78
+    },
+    "exit_reasons": {
+     "horizon": 1059
+    },
+    "signals": 1137
+   },
+   "model_gated|zero_costs": {
+    "days": 149,
+    "start_equity": 1000000.0,
+    "end_equity": 1011315.747712591,
+    "total_return": 0.011315747712590918,
+    "cagr": 0.019212807981911384,
+    "sharpe": 1.74653618553512,
+    "sortino": 1.8246066366542817,
+    "calmar": 2.0039346420717012,
+    "max_drawdown": -0.009587542217469158,
+    "trades": 1061,
+    "win_rate": 0.48539114043355325,
+    "profit_factor": 1.2200896743190242,
+    "avg_trade_return_bp": 1.0634196844554553,
+    "median_trade_return_bp": 0.0,
+    "total_costs": 0.0,
+    "gross_pnl": 11315.747712591485,
+    "net_pnl": 11315.747712591485,
+    "turnover_per_day": 1.4241610738255035,
+    "exposure": 0.0018988814317673064,
+    "skipped": {
+     "symbol_held": 0,
+     "book_full": 8,
+     "no_capital": 68
+    },
+    "exit_reasons": {
+     "horizon": 1061
+    },
+    "signals": 1137
+   },
+   "momentum|costs": {
+    "days": 149,
+    "start_equity": 1000000.0,
+    "end_equity": 2.5210120538524174,
+    "total_return": -0.9999974789879461,
+    "cagr": -0.9999999996599658,
+    "sharpe": -264.1525213875418,
+    "sortino": -15.84611101404673,
+    "calmar": -1.0000025206783743,
+    "max_drawdown": -0.9999974789879461,
+    "trades": 100466,
+    "win_rate": 0.10136762685883782,
+    "profit_factor": 0.10592445997592112,
+    "avg_trade_return_bp": -12.821884920367033,
+    "median_trade_return_bp": -12.6055605560561,
+    "total_costs": 824745.9567318489,
+    "gross_pnl": -175251.5222560995,
+    "net_pnl": -999997.4789879484,
+    "turnover_per_day": 134.8536912751678,
+    "exposure": 0.17980492170056409,
+    "skipped": {
+     "symbol_held": 0,
+     "book_full": 0,
+     "no_capital": 380171
+    },
+    "exit_reasons": {
+     "horizon": 100466
+    },
+    "signals": 480637
+   },
+   "momentum|zero_costs": {
+    "days": 149,
+    "start_equity": 1000000.0,
+    "end_equity": 763101.4558308776,
+    "total_return": -0.23689854416912237,
+    "cagr": -0.36698452160446404,
+    "sharpe": -6.155354212478709,
+    "sortino": -5.226582220220393,
+    "calmar": -1.508181899126039,
+    "max_drawdown": -0.2433290850507649,
+    "trades": 103489,
+    "win_rate": 0.44768042980413375,
+    "profit_factor": 0.9428962031706726,
+    "avg_trade_return_bp": -0.25947512996856237,
+    "median_trade_return_bp": 0.0,
+    "total_costs": 0.0,
+    "gross_pnl": -236898.5441692056,
+    "net_pnl": -236898.5441692056,
+    "turnover_per_day": 138.91140939597318,
+    "exposure": 0.18521521252832426,
+    "skipped": {
+     "symbol_held": 0,
+     "book_full": 99638,
+     "no_capital": 277510
+    },
+    "exit_reasons": {
+     "horizon": 103489
+    },
+    "signals": 480637
+   },
+   "naive_random|costs": {
+    "days": 149,
+    "start_equity": 1000000.0,
+    "end_equity": 3.486220102295769,
+    "total_return": -0.9999965137798977,
+    "cagr": -0.9999999994116711,
+    "sharpe": -333.8177972695677,
+    "sortino": -15.856708834060047,
+    "calmar": -1.000003485643925,
+    "max_drawdown": -0.9999965137798977,
+    "trades": 100327,
+    "win_rate": 0.10565450975310733,
+    "profit_factor": 0.10576801073912649,
+    "avg_trade_return_bp": -12.517729886918351,
+    "median_trade_return_bp": -12.60303969603138,
+    "total_costs": 839486.4821851559,
+    "gross_pnl": -160510.031594745,
+    "net_pnl": -999996.5137799009,
+    "turnover_per_day": 134.66711409395975,
+    "exposure": 0.1795561521256191,
+    "skipped": {
+     "symbol_held": 0,
+     "book_full": 0,
+     "no_capital": 495620
+    },
+    "exit_reasons": {
+     "horizon": 100327
+    },
+    "signals": 595947
+   },
+   "naive_random|zero_costs": {
+    "days": 149,
+    "start_equity": 1000000.0,
+    "end_equity": 1032199.1453619187,
+    "total_return": 0.03219914536191881,
+    "cagr": 0.0550616991526478,
+    "sharpe": 0.9925050212693823,
+    "sortino": 1.1482949972525835,
+    "calmar": 1.8188080754358888,
+    "max_drawdown": -0.030273507082077322,
+    "trades": 102568,
+    "win_rate": 0.462103190078777,
+    "profit_factor": 1.0070654611320145,
+    "avg_trade_return_bp": 0.03184692302690931,
+    "median_trade_return_bp": 0.0,
+    "total_costs": 0.0,
+    "gross_pnl": 32199.145361925854,
+    "net_pnl": 32199.145361925854,
+    "turnover_per_day": 137.67516778523492,
+    "exposure": 0.18356689038066726,
+    "skipped": {
+     "symbol_held": 0,
+     "book_full": 97776,
+     "no_capital": 395603
+    },
+    "exit_reasons": {
+     "horizon": 102568
+    },
+    "signals": 595947
+   },
+   "naive_long|costs": {
+    "days": 149,
+    "start_equity": 1000000.0,
+    "end_equity": 3.632008437993004,
+    "total_return": -0.999996367991562,
+    "cagr": -0.9999999993694617,
+    "sharpe": -218.321991647237,
+    "sortino": -15.83298905776997,
+    "calmar": -1.000003631391089,
+    "max_drawdown": -0.999996367991562,
+    "trades": 100327,
+    "win_rate": 0.10620271711503385,
+    "profit_factor": 0.11414999590471211,
+    "avg_trade_return_bp": -12.475636644075886,
+    "median_trade_return_bp": -12.60303969603019,
+    "total_costs": 846907.8589244757,
+    "gross_pnl": -153088.50906708674,
+    "net_pnl": -999996.3679915625,
+    "turnover_per_day": 134.66711409395975,
+    "exposure": 0.1795561521256191,
+    "skipped": {
+     "symbol_held": 0,
+     "book_full": 0,
+     "no_capital": 495620
+    },
+    "exit_reasons": {
+     "horizon": 100327
+    },
+    "signals": 595947
+   },
+   "naive_long|zero_costs": {
+    "days": 149,
+    "start_equity": 1000000.0,
+    "end_equity": 1082783.696237822,
+    "total_return": 0.08278369623782211,
+    "cagr": 0.1439828999679058,
+    "sharpe": 1.5767557402127372,
+    "sortino": 1.6435908306155678,
+    "calmar": 1.8398246607891053,
+    "max_drawdown": -0.07825903361146991,
+    "trades": 102754,
+    "win_rate": 0.45733499425813107,
+    "profit_factor": 1.0185215160451464,
+    "avg_trade_return_bp": 0.07968500816917229,
+    "median_trade_return_bp": 0.0,
+    "total_costs": 0.0,
+    "gross_pnl": 82783.6962378314,
+    "net_pnl": 82783.6962378314,
+    "turnover_per_day": 137.92483221476513,
+    "exposure": 0.18389977628670873,
+    "skipped": {
+     "symbol_held": 0,
+     "book_full": 104869,
+     "no_capital": 388324
+    },
+    "exit_reasons": {
+     "horizon": 102754
+    },
+    "signals": 595947
+   },
+   "buy_and_hold|costs": {
+    "days": 149,
+    "start_equity": 1000000.0,
+    "end_equity": 1015253.7355874545,
+    "total_return": 0.015253735587454464,
+    "cagr": 0.02593406703290646,
+    "sharpe": 0.23073216484151363,
+    "sortino": 0.22156194576852564,
+    "calmar": 0.17408564432150406,
+    "max_drawdown": -0.1489730364268924,
+    "trades": 200,
+    "win_rate": null,
+    "profit_factor": null,
+    "avg_trade_return_bp": null,
+    "median_trade_return_bp": null,
+    "total_costs": 1070.9685743040964,
+    "gross_pnl": 0.0,
+    "net_pnl": 0.0,
+    "turnover_per_day": 0.0,
+    "exposure": 1.0,
+    "skipped": {},
+    "exit_reasons": {}
+   },
+   "buy_and_hold|zero_costs": {
+    "days": 149,
+    "start_equity": 1000000.0,
+    "end_equity": 1016527.9995963979,
+    "total_return": 0.016527999596397835,
+    "cagr": 0.028112814438896017,
+    "sharpe": 0.24230051421603083,
+    "sortino": 0.23277596307046608,
+    "calmar": 0.1887872423845883,
+    "max_drawdown": -0.14891268119498213,
+    "trades": 200,
+    "win_rate": null,
+    "profit_factor": null,
+    "avg_trade_return_bp": null,
+    "median_trade_return_bp": null,
+    "total_costs": 0.0,
+    "gross_pnl": 0.0,
+    "net_pnl": 0.0,
+    "turnover_per_day": 0.0,
+    "exposure": 1.0,
+    "skipped": {},
+    "exit_reasons": {}
+   }
+  }
+ },
+ {
+  "experiment": {
+   "experiment_id": "20261019T071859-p12-backtest-lightgbm-y_5m_10bp-tuned-44283219",
+   "runner_version": "backtest-v1",
+   "phase": 12,
+   "dataset_id": "dataset-v1-features-v2-labels-v1-u100-s5",
+   "dataset": "core100_s5",
+   "train_period": {
+    "name": "train",
+    "start": "2022-01-03",
+    "end": "2024-11-04"
+   },
+   "validation_period": {
+    "name": "validation",
+    "start": "2024-11-05",
+    "end": "2025-06-13"
+   },
+   "test_period": {
+    "name": "test",
+    "start": "2025-06-16",
+    "end": "2026-01-21",
+    "used": false
+   },
+   "config": {
+    "step": "backtest",
+    "source_experiment": "20261018T181358-p9-wf-expanding-lightgbm-y_5m_10bp-tuned-1a2aa277",
+    "label": "y_5m_10bp",
+    "model": "lightgbm",
+    "tag": "tuned",
+    "horizon": 5,
+    "threshold": 0.001,
+    "engine": {
+     "capital": 1000000.0,
+     "position_frac": 0.1,
+     "max_positions": 10,
+     "horizon": 5,
+     "stop_loss_bp": null,
+     "take_profit_bp": null,
+     "costs": {
+      "brokerage_bp": 3.0,
+      "brokerage_cap_inr": 20.0,
+      "stt_sell_bp": 2.5,
+      "exchange_bp": 0.297,
+      "sebi_bp": 0.01,
+      "stamp_buy_bp": 0.3,
+      "gst_rate": 0.18,
+      "slippage_bp": 1.0
+     }
+    },
+    "round_trip_cost_bp": 10.24452,
+    "gate": {
+     "chosen": {
+      "gate": 0.56,
+      "coverage": 0.006995929870021558,
+      "net_bp_per_call": -2.983862082131224
+     },
+     "grid": [
+      {
+       "gate": 0.34,
+       "coverage": 0.40936436989274005,
+       "net_bp_per_call": -8.965975309875173
+      },
+      {
+       "gate": 0.36,
+       "coverage": 0.3775668633039525,
+       "net_bp_per_call": -8.883232713975513
+      },
+      {
+       "gate": 0.38,
+       "coverage": 0.32055918303882996,
+       "net_bp_per_call": -8.76491219908227
+      },
+      {
+       "gate": 0.4,
+       "coverage": 0.25812886514457833,
+       "net_bp_per_call": -8.613903225476182
+      },
+      {
+       "gate": 0.42,
+       "coverage": 0.19889071098133418,
+       "net_bp_per_call": -8.39308053269084
+      },
+      {
+       "gate": 0.44,
+       "coverage": 0.1448353376888993,
+       "net_bp_per_call": -8.059162198270723
+      },
+      {
+       "gate": 0.46,
+       "coverage": 0.09867422571038169,
+       "net_bp_per_call": -7.553223419846896
+      },
+      {
+       "gate": 0.48,
+       "coverage": 0.06266952813839799,
+       "net_bp_per_call": -6.754696278603735
+      },
+      {
+       "gate": 0.5,
+       "coverage": 0.037319060886442046,
+       "net_bp_per_call": -5.783650367693393
+      },
+      {
+       "gate": 0.52,
+       "coverage": 0.021483019466865018,
+       "net_bp_per_call": -4.995493259792117
+      },
+      {
+       "gate": 0.54,
+       "coverage": 0.012168366514056997,
+       "net_bp_per_call": -4.112133182025181
+      },
+      {
+       "gate": 0.56,
+       "coverage": 0.006995929870021558,
+       "net_bp_per_call": -2.983862082131224
+      }
+     ]
+    },
+    "period": {
+     "start": "2024-11-05",
+     "end": "2025-06-13",
+     "fold": "F5"
+    }
+   },
+   "created_at": "2026-10-19T07:18:59.701950+00:00"
+  },
+  "result": {
+   "model|costs": {
+    "days": 149,
+    "start_equity": 1000000.0,
+    "end_equity": 5.203367748573,
+    "total_return": -0.9999947966322514,
+    "cagr": -0.9999999988418009,
+    "sharpe": -115.32950631343319,
+    "sortino": -15.727212894432933,
+    "calmar": -1.0000052022366186,
+    "max_drawdown": -0.9999947966322514,
+    "trades": 98527,
+    "win_rate": 0.2780760603692389,
+    "profit_factor": 0.33012983926793704,
+    "avg_trade_return_bp": -12.331563323441154,
+    "median_trade_return_bp": -11.750318972963044,
+    "total_costs": 829451.0698791405,
+    "gross_pnl": -170543.72675311402,
+    "net_pnl": -999994.7966322545,
+    "turnover_per_day": 132.25100671140942,
+    "exposure": 0.8816733780760626,
+    "skipped": {
+     "symbol_held": 0,
+     "book_full": 0,
+     "no_capital": 493768
+    },
+    "exit_reasons": {
+     "horizon": 98527
+    },
+    "signals": 592295
+   },
+   "model|zero_costs": {
+    "days": 149,
+    "start_equity": 1000000.0,
+    "end_equity": 1213127.1288496929,
+    "total_return": 0.21312712884969298,
+    "cagr": 0.38646422114459233,
+    "sharpe": 1.9005350601230626,
+    "sortino": 1.894412445448696,
+    "calmar": 3.409577625277717,
+    "max_drawdown": -0.1133466556911471,
+    "trades": 100790,
+    "win_rate": 0.5086218870919734,
+    "profit_factor": 1.021603894700639,
+    "avg_trade_return_bp": 0.20140144296755644,
+    "median_trade_return_bp": 0.7802418497243673,
+    "total_costs": 0.0,
+    "gross_pnl": 213127.1288496776,
+    "net_pnl": 213127.1288496776,
+    "turnover_per_day": 135.28859060402684,
+    "exposure": 0.901923937360179,
+    "skipped": {
+     "symbol_held": 0,
+     "book_full": 100055,
+     "no_capital": 391450
+    },
+    "exit_reasons": {
+     "horizon": 100790
+    },
+    "signals": 592295
+   },
+   "model_gated|costs": {
+    "days": 149,
+    "start_equity": 1000000.0,
+    "end_equity": 656440.4959117325,
+    "total_return": -0.3435595040882674,
+    "cagr": -0.5092875687881055,
+    "sharpe": -11.353345177229016,
+    "sortino": -8.331479732852188,
+    "calmar": -1.4781793027478305,
+    "max_drawdown": -0.3445370719515394,
+    "trades": 4640,
+    "win_rate": 0.3644396551724138,
+    "profit_factor": 0.5169300284107335,
+    "avg_trade_return_bp": -9.047117558168315,
+    "median_trade_return_bp": -8.827293514599472,
+    "total_costs": 349944.6769074822,
+    "gross_pnl": 6385.172819208994,
+    "net_pnl": -343559.5040882732,
+    "turnover_per_day": 6.228187919463088,
+    "exposure": 0.041521252796420584,
+    "skipped": {
+     "symbol_held": 0,
+     "book_full": 0,
+     "no_capital": 3739
+    },
+    "exit_reasons": {
+     "horizon": 4640
+    },
+    "signals": 8379
+   },
+   "model_gated|zero_costs": {
+    "days": 149,
+    "start_equity": 1000000.0,
+    "end_equity": 1120161.7388860872,
+    "total_return": 0.12016173888608717,
+    "cagr": 0.2115665724487783,
+    "sharpe": 3.7253005389029323,
+    "sortino": 4.3796857986492865,
+    "calmar": 14.084867081945454,
+    "max_drawdown": -0.015020842668793999,
+    "trades": 4682,
+    "win_rate": 0.5296881674498077,
+    "profit_factor": 1.1978762186903154,
+    "avg_trade_return_bp": 2.4465449052344987,
+    "median_trade_return_bp": 2.794781557931457,
+    "total_costs": 0.0,
+    "gross_pnl": 120161.73888609036,
+    "net_pnl": 120161.73888609036,
+    "turnover_per_day": 6.284563758389262,
+    "exposure": 0.04189709172259508,
+    "skipped": {
+     "symbol_held": 0,
+     "book_full": 741,
+     "no_capital": 2956
+    },
+    "exit_reasons": {
+     "horizon": 4682
+    },
+    "signals": 8379
+   },
+   "momentum|costs": {
+    "days": 149,
+    "start_equity": 1000000.0,
+    "end_equity": 2.7088630345972753,
+    "total_return": -0.9999972911369654,
+    "cagr": -0.9999999996160179,
+    "sharpe": -123.10446837819288,
+    "sortino": -15.74501106658393,
+    "calmar": -1.0000027084863894,
+    "max_drawdown": -0.9999972911369654,
+    "trades": 99125,
+    "win_rate": 0.23529886506935688,
+    "profit_factor": 0.31826778533610595,
+    "avg_trade_return_bp": -12.916136247135475,
+    "median_trade_return_bp": -13.471888986216614,
+    "total_costs": 834680.5529725165,
+    "gross_pnl": -165316.7381644518,
+    "net_pnl": -999997.2911369683,
+    "turnover_per_day": 133.05369127516778,
+    "exposure": 0.8870246085011185,
+    "skipped": {
+     "symbol_held": 0,
+     "book_full": 0,
+     "no_capital": 402628
+    },
+    "exit_reasons": {
+     "horizon": 99125
+    },
+    "signals": 501753
+   },
+   "momentum|zero_costs": {
+    "days": 149,
+    "start_equity": 1000000.0,
+    "end_equity": 678620.9049308472,
+    "total_return": -0.32137909506915274,
+    "cagr": -0.4809187738016195,
+    "sharpe": -3.62706880806127,
+    "sortino": -3.410041916248443,
+    "calmar": -1.3982344534620124,
+    "max_drawdown": -0.34394716323208185,
+    "trades": 102550,
+    "win_rate": 0.46296440760604585,
+    "profit_factor": 0.9621347249782027,
+    "avg_trade_return_bp": -0.3695444465380037,
+    "median_trade_return_bp": -0.9119581780335156,
+    "total_costs": 0.0,
+    "gross_pnl": -321379.0950692467,
+    "net_pnl": -321379.0950692467,
+    "turnover_per_day": 137.6510067114094,
+    "exposure": 0.9176733780760626,
+    "skipped": {
+     "symbol_held": 0,
+     "book_full": 120636,
+     "no_capital": 278567
+    },
+    "exit_reasons": {
+     "horizon": 102550
+    },
+    "signals": 501753
+   },
+   "naive_random|costs": {
+    "days": 149,
+    "start_equity": 1000000.0,
+    "end_equity": 4.616988237104152,
+    "total_return": -0.9999953830117629,
+    "cagr": -0.9999999990538446,
+    "sharpe": -167.28291892193062,
+    "sortino": -15.803983138141174,
+    "calmar": -1.000004616063394,
+    "max_drawdown": -0.9999953830117629,
+    "trades": 98527,
+    "win_rate": 0.2689821064276797,
+    "profit_factor": 0.3446619980278166,
+    "avg_trade_return_bp": -12.458141140797405,
+    "median_trade_return_bp": -12.603039696030649,
+    "total_costs": 851630.8270412323,
+    "gross_pnl": -148364.55597053037,
+    "net_pnl": -999995.3830117626,
+    "turnover_per_day": 132.25100671140942,
+    "exposure": 0.8816733780760626,
+    "skipped": {
+     "symbol_held": 0,
+     "book_full": 0,
+     "no_capital": 493768
+    },
+    "exit_reasons": {
+     "horizon": 98527
+    },
+    "signals": 592295
+   },
+   "naive_random|zero_costs": {
+    "days": 149,
+    "start_equity": 1000000.0,
+    "end_equity": 1102575.36150238,
+    "total_return": 0.10257536150238011,
+    "cagr": 0.17957097224629148,
+    "sharpe": 1.3723660428413174,
+    "sortino": 1.4188717040871461,
+    "calmar": 1.7488081594179228,
+    "max_drawdown": -0.10268191584036312,
+    "trades": 101625,
+    "win_rate": 0.4912767527675277,
+    "profit_factor": 1.0092045672382282,
+    "avg_trade_return_bp": 0.10036115999702085,
+    "median_trade_return_bp": 0.0,
+    "total_costs": 0.0,
+    "gross_pnl": 102575.36150253046,
+    "net_pnl": 102575.36150253046,
+    "turnover_per_day": 136.40939597315437,
+    "exposure": 0.9093959731543624,
+    "skipped": {
+     "symbol_held": 0,
+     "book_full": 138748,
+     "no_capital": 351922
+    },
+    "exit_reasons": {
+     "horizon": 101625
+    },
+    "signals": 592295
+   },
+   "naive_long|costs": {
+    "days": 149,
+    "start_equity": 1000000.0,
+    "end_equity": 4.746721909962937,
+    "total_return": -0.99999525327809,
+    "cagr": -0.9999999990084445,
+    "sharpe": -91.56302622674335,
+    "sortino": -15.642708751236004,
+    "calmar": -1.0000047457528813,
+    "max_drawdown": -0.99999525327809,
+    "trades": 98527,
+    "win_rate": 0.2618064083956682,
+    "profit_factor": 0.3491111791168288,
+    "avg_trade_return_bp": -12.422344534376965,
+    "median_trade_return_bp": -12.603039696031958,
+    "total_costs": 841090.6072942547,
+    "gross_pnl": -158904.6459838322,
+    "net_pnl": -999995.2532780869,
+    "turnover_per_day": 132.25100671140942,
+    "exposure": 0.8816733780760626,
+    "skipped": {
+     "symbol_held": 0,
+     "book_full": 0,
+     "no_capital": 493768
+    },
+    "exit_reasons": {
+     "horizon": 98527
+    },
+    "signals": 592295
+   },
+   "naive_long|zero_costs": {
+    "days": 149,
+    "start_equity": 1000000.0,
+    "end_equity": 1097924.182139423,
+    "total_return": 0.097924182139423,
+    "cagr": 0.1711674919262609,
+    "sharpe": 0.802344720873444,
+    "sortino": 0.8268600188478378,
+    "calmar": 1.169518203747001,
+    "max_drawdown": -0.14635727035103863,
+    "trades": 100712,
+    "win_rate": 0.476169671935817,
+    "profit_factor": 1.0101048839747042,
+    "avg_trade_return_bp": 0.1049122902880369,
+    "median_trade_return_bp": -0.3359460892825622,
+    "total_costs": 0.0,
+    "gross_pnl": 97924.18213941489,
+    "net_pnl": 97924.18213941489,
+    "turnover_per_day": 135.1838926174497,
+    "exposure": 0.9012259507829977,
+    "skipped": {
+     "symbol_held": 0,
+     "book_full": 96191,
+     "no_capital": 395392
+    },
+    "exit_reasons": {
+     "horizon": 100712
+    },
+    "signals": 592295
+   },
+   "buy_and_hold|costs": {
+    "days": 149,
+    "start_equity": 1000000.0,
+    "end_equity": 1015253.7355874545,
+    "total_return": 0.015253735587454464,
+    "cagr": 0.02593406703290646,
+    "sharpe": 0.23073216484151363,
+    "sortino": 0.22156194576852564,
+    "calmar": 0.17408564432150406,
+    "max_drawdown": -0.1489730364268924,
+    "trades": 200,
+    "win_rate": null,
+    "profit_factor": null,
+    "avg_trade_return_bp": null,
+    "median_trade_return_bp": null,
+    "total_costs": 1070.9685743040964,
+    "gross_pnl": 0.0,
+    "net_pnl": 0.0,
+    "turnover_per_day": 0.0,
+    "exposure": 1.0,
+    "skipped": {},
+    "exit_reasons": {}
+   },
+   "buy_and_hold|zero_costs": {
+    "days": 149,
+    "start_equity": 1000000.0,
+    "end_equity": 1016527.9995963979,
+    "total_return": 0.016527999596397835,
+    "cagr": 0.028112814438896017,
+    "sharpe": 0.24230051421603083,
+    "sortino": 0.23277596307046608,
+    "calmar": 0.1887872423845883,
+    "max_drawdown": -0.14891268119498213,
+    "trades": 200,
+    "win_rate": null,
+    "profit_factor": null,
+    "avg_trade_return_bp": null,
+    "median_trade_return_bp": null,
+    "total_costs": 0.0,
+    "gross_pnl": 0.0,
+    "net_pnl": 0.0,
+    "turnover_per_day": 0.0,
+    "exposure": 1.0,
+    "skipped": {},
+    "exit_reasons": {}
+   }
+  }
+ }
+]

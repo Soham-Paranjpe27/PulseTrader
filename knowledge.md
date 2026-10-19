@@ -1,17 +1,14 @@
 # knowledge.md — PulseTrader V4 project state
 
-Last updated: 2026-10-17 18:45 UTC (phase 8 paused).
+Last updated: 2026-10-19 (phase 12 done).
 
 ## Current phase
-Phases 0–11 DONE on real data (Phase 11 finished 2026-10-19). Next: Phase 12 (backtesting).
+Phases 0–12 DONE on real data (Phase 12 finished 2026-10-19). Next: Phase 13 (model registry).
 
 ## Next exact action
-1. Phase 12 (backtesting): event-driven portfolio backtester (entry/exit, capital, position size, costs,
-   slippage, brokerage/STT config, holding period, stop/take-profit, turnover, exposure, concurrent
-   positions), metrics (total return, CAGR, Sharpe, Sortino, Calmar, max DD, win rate, profit factor,
-   avg/median trade), vs buy-and-hold, naive and momentum. Run on validation predictions of tuned
-   LightGBM y_1m_5bp / y_5m_10bp (data/experiments/*-p9-wf-expanding-lightgbm-*-tuned-*). Test unused.
-   Expect negative net results: Phase 11 break-even is < 2 bp per call.
+1. Phase 13 (model registry): register the tuned LightGBM y_1m_5bp / y_5m_10bp walk-forward models
+   with dataset/feature/label versions, preprocessor, calibrator (Phase 10 isotonic), validation metrics
+   and Phase 12 backtest results; mark them research-only (not profitable after costs). Test unused.
 2. If the container was recycled, data/ is gone: torch needs `pip install torch --index-url
    https://download.pytorch.org/whl/cpu`, then `pulsetrader fetch`, `pipeline`, `security`, `dataset`
    (~35 min), then `pulsetrader optimize --steps W` / `T` to recreate Phase 9 predictions.
@@ -119,12 +116,23 @@ Tuned LightGBM walk-forward OOF predictions; buckets from training-period info o
 - Fold MCC declines 0.241 (2023) -> 0.194 (validation): edge shrinking over time.
 - Per-call gross 0.5-1.9 bp; break-even < 2 bp round trip, so negative after realistic NSE costs.
 
+## Phase 12 results (backtest-v1, DONE 2026-10-19) — reports/phase12_backtest.md, docs/backtesting.md
+Event-driven engine (backtest/engine.py): entry next bar open, exit at horizon close or session close,
+optional SL/TP, 10 positions x 10% equity, one per symbol, Indian intraday charges + 1 bp slippage per side
+(~10.2 bp round trip at Rs 1 lakh). Validation 2024-11-05..2025-06-13, tuned LightGBM signals.
+- Zero costs: 1m model +47.9% (avg 0.38 bp/trade) and 5m +21.3% beat momentum (-24%/-32%), random
+  (+3%/+10%) and always-long (+8%/+10%). Buy-and-hold +1.5% after costs.
+- With costs all intraday strategies lose: ungated -> ~-100%; gate chosen on pre-validation folds
+  (1m P>=0.60, 5m P>=0.56) gives 1.1/2.5 bp gross per trade, still -9.5% / -34.4% net.
+- Signal is real but 4-10x too small for intraday costs. Not tradeable.
+
 ## Architecture
 - `ml/src/pulsetrader/`: config, data/{schema,validate,io,discovery,pipeline},
   security/{lists,master}, features/{engine,preprocess}, labels/labels, splits/splits, eval/metrics,
   datasets/build, audit/leakage, eval/multiclass, models/classical,
   experiments/classical, datasets/sequences, models/deep, experiments/deep, serve/app (health/ready only),
-  cli (fetch, discover, pipeline, security, dataset, audit, classical, deep).
+  experiments/{optimize,calibrate,robustness,backtest}, eval/calibration, backtest/engine,
+  cli (fetch, discover, pipeline, security, dataset, audit, classical, deep, optimize, calibrate, robustness, backtest).
 - Docker baseline: docker-compose (postgres, redis, ml-service). ml/Dockerfile. CI: .github/workflows/ci.yml.
 - Backend (NestJS) and frontend (Next.js): not started.
 

@@ -172,6 +172,19 @@ def cmd_robustness(args: argparse.Namespace) -> None:
     print(f"{len(rows)} robustness experiments written")
 
 
+def cmd_backtest(args: argparse.Namespace) -> None:
+    from pulsetrader.experiments.backtest import render_summary, run
+
+    p = data_paths()
+    rows = run(p.root, p.root / "experiments")
+    reports = Path(args.reports)
+    reports.mkdir(parents=True, exist_ok=True)
+    (reports / "phase12_backtest.md").write_text(render_summary(rows))
+    slim = [{"experiment": r["experiment"], "result": r["result"]} for r in rows]
+    (reports / "phase12_backtest.json").write_text(json.dumps(slim, indent=1, default=str))
+    print(f"{len(rows)} backtest experiments written")
+
+
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     ap = argparse.ArgumentParser(prog="pulsetrader")
@@ -217,6 +230,9 @@ def main() -> None:
     rb = sub.add_parser("robustness", help="Phase 11: regimes, sectors, symbols, volatility, costs")
     rb.add_argument("--reports", default="../reports")
     rb.set_defaults(func=cmd_robustness)
+    bt = sub.add_parser("backtest", help="Phase 12: portfolio backtests vs buy-and-hold, naive, momentum")
+    bt.add_argument("--reports", default="../reports")
+    bt.set_defaults(func=cmd_backtest)
     au = sub.add_parser("audit", help="Phase 6: leakage gate on real data for a built dataset")
     au.add_argument("--name", default="core100_s5")
     au.add_argument("--reports", default="../reports")
