@@ -1,4 +1,4 @@
-"""Command-line entry points: `pulsetrader fetch|discover|pipeline|security|dataset|audit|classical|deep`."""
+"""Command-line entry points: `pulsetrader <command>` (see `pulsetrader --help`)."""
 
 from __future__ import annotations
 
@@ -227,6 +227,69 @@ def cmd_export_app(args: argparse.Namespace) -> None:
     print(export(p.root, p.root / "app"))
 
 
+def cmd_live(args: argparse.Namespace) -> None:
+    """Run the live pipeline: MARKET_DATA_PROVIDER=kite (real time) or replay of --date."""
+    import asyncio
+    import os
+    from datetime import date
+
+    from pulsetrader.live.features import LiveUniverse
+    from pulsetrader.live.pipeline import ApiSink, JsonlSink, LivePipeline, Sink
+    from pulsetrader.live.providers import provider_from_env
+    from pulsetrader.serve.models import ModelServer
+
+    p = data_paths()
+    day = date.fromisoformat(args.date) if args.date else None
+    provider = provider_from_env(p.root, day, speed=args.speed)
+    srv = ModelServer(p.root / "registry")
+    models = [m for m in srv.models.values() if not args.model or m.record.model_id in args.model]
+    if not models:
+        raise SystemExit(f"no servable models selected ({srv.load_errors or 'registry empty'})")
+    sinks: list[Sink] = [JsonlSink(Path(args.out))]
+    api, token = os.environ.get("LIVE_API_URL"), os.environ.get("LIVE_INGEST_TOKEN")
+    if api and token:
+        sinks.append(ApiSink(api, token))
+    elif api:
+        log.warning("LIVE_API_URL set without LIVE_INGEST_TOKEN; not sending to the API")
+    uni = LiveUniverse.from_manifest(p.datasets / args.name)
+    res = asyncio.run(LivePipeline(provider, uni, models, sinks).run())
+    print(json.dumps(res, indent=1, default=str))
+
+
+def cmd_live_parity(args: argparse.Namespace) -> None:
+    from datetime import date
+
+    from pulsetrader.live.parity import check, render
+
+    p = data_paths()
+    reports = Path(args.reports)
+    reports.mkdir(parents=True, exist_ok=True)
+    results = [check(p.root, date.fromisoformat(d), args.name) for d in args.dates]
+    (reports / "phase17_live.md").write_text("\n".join(render(r) for r in results))
+    (reports / "phase17_live.json").write_text(json.dumps(results, indent=1, default=str))
+    for r in results:
+        print(r["date"], "features", r["features_exact"], "/", r["features_compared"],
+              [(m["model"], m["max_abs_prob_diff"]) for m in r["predictions"]])  # fmt: skip
+
+
+def cmd_kite_login(args: argparse.Namespace) -> None:
+    """Without --request-token: print the Zerodha login URL. With it: print a one-day access token
+    for MARKET_DATA_ACCESS_TOKEN (not stored anywhere by this command)."""
+    import os
+
+    from pulsetrader.live.kite import exchange_request_token, login_url
+
+    key, secret = os.environ.get("MARKET_DATA_API_KEY", ""), os.environ.get("MARKET_DATA_API_SECRET", "")
+    if not key:
+        raise SystemExit("set MARKET_DATA_API_KEY (your Kite Connect app key)")
+    if not args.request_token:
+        print(login_url(key))
+        return
+    if not secret:
+        raise SystemExit("set MARKET_DATA_API_SECRET to exchange the request token")
+    print(exchange_request_token(key, secret, args.request_token))
+
+
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     ap = argparse.ArgumentParser(prog="pulsetrader")
@@ -293,6 +356,21 @@ def main() -> None:
     au.add_argument("--name", default="core100_s5")
     au.add_argument("--reports", default="../reports")
     au.set_defaults(func=cmd_audit)
+    lv = sub.add_parser("live", help="Phase 17: live pipeline (MARKET_DATA_PROVIDER=kite, or replay --date)")
+    lv.add_argument("--date", help="replay session YYYY-MM-DD (replay provider only)")
+    lv.add_argument("--speed", type=float, default=0.0, help="replay speed x real time (0 = max)")
+    lv.add_argument("--model", nargs="*", help="model ids (default: every servable model)")
+    lv.add_argument("--name", default="core100_s5")
+    lv.add_argument("--out", default="../data/live/live_predictions.jsonl")
+    lv.set_defaults(func=cmd_live)
+    lp = sub.add_parser("live-parity", help="Phase 17: replay validation sessions, compare with research")
+    lp.add_argument("--dates", nargs="+", default=["2025-06-13"])
+    lp.add_argument("--name", default="core100_s5")
+    lp.add_argument("--reports", default="../reports")
+    lp.set_defaults(func=cmd_live_parity)
+    kl = sub.add_parser("kite-login", help="Zerodha Kite Connect login URL / request-token exchange")
+    kl.add_argument("--request-token")
+    kl.set_defaults(func=cmd_kite_login)
     a = ap.parse_args()
     a.func(a)
 

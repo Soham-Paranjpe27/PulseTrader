@@ -1,11 +1,15 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InstrumentType, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { liveStatus } from '../market-data/market-data.service';
+import { LiveService } from '../live/live.service';
+import { recentAccuracy } from './accuracy';
 
 @Injectable()
 export class StocksService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly live: LiveService,
+  ) {}
 
   async search(
     q: string | undefined,
@@ -70,32 +74,8 @@ export class StocksService {
         : null,
       latestPrediction,
       recentAccuracy: await recentAccuracy(this.prisma, { symbol }),
-      liveStatus: liveStatus(),
+      liveStatus: await this.live.status(),
+      livePrice: await this.live.price(symbol),
     };
   }
-}
-
-/** Direction accuracy over the most recent evaluated directional calls (never over abstentions). */
-export async function recentAccuracy(
-  prisma: PrismaService,
-  where: Prisma.PredictionWhereInput,
-  windows = [20, 50, 100, 500],
-) {
-  const rows = await prisma.prediction.findMany({
-    where: { ...where, direction: { in: ['UP', 'DOWN'] }, outcome: { isNot: null } },
-    orderBy: { predictionTimestamp: 'desc' },
-    take: Math.max(...windows),
-    select: { outcome: { select: { directionCorrect: true } } },
-  });
-  const out: Record<string, { n: number; accuracy: number | null }> = {};
-  for (const w of windows) {
-    const s = rows
-      .slice(0, w)
-      .filter((r) => r.outcome?.directionCorrect !== null && r.outcome?.directionCorrect !== undefined);
-    out[`last_${w}`] = {
-      n: s.length,
-      accuracy: s.length ? s.filter((r) => r.outcome?.directionCorrect).length / s.length : null,
-    };
-  }
-  return out;
 }

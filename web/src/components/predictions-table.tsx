@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { istTime, pct } from '@/lib/format';
 import type { Prediction } from '@/lib/types';
 import { DirectionBadge, ResearchOnly } from './status';
+import { Badge } from './ui/badge';
 import { Table, TBody, TD, TH, THead, TR } from './ui/table';
 
 export function PredictionsTable({ rows, showSymbol = true }: { rows: Prediction[]; showSymbol?: boolean }) {
@@ -50,6 +51,11 @@ export function PredictionsTable({ rows, showSymbol = true }: { rows: Prediction
             <TD className="text-xs">
               <div className="flex items-center gap-1.5">
                 {p.modelVersionId} <ResearchOnly on={p.researchOnly} />
+                {p.mode === 'LIVE' || p.mode === 'REPLAY' ? (
+                  <Badge tone={p.mode === 'LIVE' ? 'up' : 'info'} title="made by the live pipeline">
+                    {p.mode}
+                  </Badge>
+                ) : null}
               </div>
             </TD>
             <TD className="text-muted-foreground text-xs">{p.dataQuality}</TD>

@@ -1,20 +1,21 @@
 # knowledge.md — PulseTrader V4 project state
 
-Last updated: 2026-10-19 (phase 16 done).
+Last updated: 2026-10-19 (phase 17 done).
 
 ## Current phase
-Phases 0–16 DONE on real data (Phase 16 finished 2026-10-19). Next: Phase 17 (live market system).
+Phases 0–17 DONE on real data (Phase 17 finished 2026-10-19). Next: Phase 18 (live paper evaluation).
 
 ## Next exact action
-1. Phase 17 (live market system): MarketDataProvider (Historical / Live / Snapshot / Mock test-only),
-   streaming gateway, validation (LIVE / DELAYED / STALE / DISCONNECTED / INVALID), candle aggregator,
-   shared feature engine on live bars (features.engine.compute_symbol_features, as /indicators does),
-   inference through the ML service `features` input, prediction store, SSE to the dashboard.
-   No authorised provider or credentials exist in this environment (nseindia.com blocked): build against
-   the provider interface and replay recorded canonical sessions through HistoricalProvider; the feed must
-   never be reported LIVE from a replay. Ask the user which provider to use for real LIVE mode.
-   Local stack: `service postgresql start; redis-server --daemonize yes`; ML :8000, API :3001
-   (`TRUST_PROXY=1 node dist/main.js`), web :3000 (docs/frontend.md).
+1. Phase 18 (live paper evaluation, spec section 48): after each prediction horizon compute actual price,
+   actual return, prediction error and direction correctness (PredictionOutcome rows) for LIVE and
+   REPLAY predictions; rolling 20/50/100/500, daily/weekly/monthly accuracy plus MCC, balanced accuracy,
+   coverage and calibration; paper portfolio driven by live predictions. Outcomes come from the same
+   validated bars the pipeline caches (replay: canonical bars), never from a different source.
+   Real LIVE needs the user's Kite Connect key/secret + daily access token and network access to
+   api.kite.trade / ws.kite.trade (both blocked here); until then evaluate on replayed validation days,
+   always labelled REPLAY. Local stack: `service postgresql start; redis-server --daemonize yes`; ML :8000,
+   API :3001 (`TRUST_PROXY=1 LIVE_INGEST_TOKEN=... node dist/main.js`), web :3000 (docs/frontend.md),
+   replay: docs/live-data.md.
 2. If the container was recycled, data/ is gone: torch needs `pip install torch --index-url
    https://download.pytorch.org/whl/cpu`, then `pulsetrader fetch`, `pipeline`, `security`, `dataset`
    (~35 min), then `pulsetrader optimize --steps W` / `T` to recreate Phase 9 predictions.
@@ -185,6 +186,31 @@ optional SL/TP, 10 positions x 10% equity, one per symbol, Indian intraday charg
   (new indicators fallback test). npm audit --omit=dev 0 for web (postcss override).
 - API: `TRUST_PROXY` env (hops) so throttling/audit see client IPs behind the web proxy.
 
+## Phase 17 results (DONE 2026-10-19) — docs/live-data.md, reports/phase17_live.{md,json}
+- ml/src/pulsetrader/live/: events (Tick, Bar, FeedState incl. REPLAY), providers (MarketDataProvider;
+  HistoricalProvider replay refuses the test period; SnapshotProvider; LiveProvider tick->bar base;
+  MockProvider refuses to run outside tests), kite (Zerodha Kite Connect: binary tick parser, instruments
+  map, historical warm-up candles, login checksum; credentials from env only), candles (aggregator,
+  cumulative-volume increments), validate (9 reject reasons, FeedMonitor states), cache, features
+  (shared engine + `add_cross_sectional`, which the dataset builder now also calls), pipeline (sinks:
+  memory, JSONL, API), parity. CLI: `live`, `live-parity`, `kite-login`. Optional dep `.[live]` = websockets.
+- Parity on 3 replayed validation sessions (2024-12-02, 2025-03-17, 2025-06-13): 84/84 features match
+  the research dataset on every row (7,500 rows/day), raw probabilities match stored walk-forward
+  predictions to 3e-8 for both CANDIDATE models. Feature build ~1 s per sampled bar (100 stocks).
+- On 2025-06-13 the 1m model called 2 of 7,500 rows and the 5m model 58 (rest LOW_CONFIDENCE / OOD):
+  the confidence gate makes live coverage very low; no live accuracy is claimed (Phase 18 measures it).
+- API: new `live` module. `POST /api/live/ingest` and `/api/live/status` (x-ingest-token vs
+  LIVE_INGEST_TOKEN, constant-time, no throttle/CSRF); status in Redis (TTL 120 s, else DISCONNECTED);
+  a replay can never show as LIVE (forced server-side). `GET /api/market-data/:symbol/live`. User-requested
+  predictions are now stored as HISTORICAL or CLIENT_FEATURES (were LIVE for client features: fixed).
+  `recentAccuracy` moved to stocks/accuracy.ts (circular import broke DI).
+- Web: FEED REPLAY badge, REPLAY notice with the replay price, live/delayed price replaces the stored close
+  only for a real feed, LIVE/REPLAY badge in prediction tables.
+- Verified end to end: replay of 2025-06-13 at 20x into the running API/web; dashboard showed
+  "FEED REPLAY (recorded, not live)" and predictions stored with mode REPLAY.
+- Tests: ML 95 (13 new: Kite packets, candles, validation, feed states, providers, golden replay parity,
+  Mock ticks -> bars -> features parity); API 21 unit + 13 e2e (new live ingestion test); web 13 unit.
+
 ## Architecture
 - `ml/src/pulsetrader/`: config, data/{schema,validate,io,discovery,pipeline},
   security/{lists,master}, features/{engine,preprocess}, labels/labels, splits/splits, eval/metrics,
@@ -192,10 +218,11 @@ optional SL/TP, 10 positions x 10% equity, one per symbol, Indian intraday charg
   experiments/classical, datasets/sequences, models/deep, experiments/deep, serve/{app,models,store,parity},
   experiments/{optimize,calibrate,robustness,backtest,register}, eval/calibration, backtest/engine,
   registry/registry,
-  cli (fetch, discover, pipeline, security, dataset, audit, classical, deep, optimize, calibrate, robustness, backtest, registry, serve-check, export-app).
+  live/{events,providers,kite,candles,validate,cache,features,pipeline,parity},
+  cli (fetch, discover, pipeline, security, dataset, audit, classical, deep, optimize, calibrate, robustness, backtest, registry, serve-check, export-app, live, live-parity, kite-login).
 - Docker baseline: docker-compose (postgres, redis, ml-service). ml/Dockerfile. CI: .github/workflows/ci.yml.
 - Backend: api/ (NestJS, Phase 15). Frontend: web/ (Next.js, Phase 16). ML service also serves /bars and /indicators.
-- Docker: compose services postgres, redis, ml-service, api, web; CI jobs ml, api, web, docker (ml, api, web images).
+- Docker: compose services postgres, redis, ml-service, api, web, live-pipeline (profile `live`); CI jobs ml, api, web, docker (ml, api, web images).
 
 ## Versions
 - schema `canonical-v1`, processing `pipeline-v2`, security master `secmaster-v1`,
@@ -234,13 +261,15 @@ optional SL/TP, 10 positions x 10% equity, one per symbol, Indian intraday charg
 | 14 ML inference API | DONE 2026-10-19: FastAPI, parity 3e-8 |
 | 15 Backend | DONE 2026-10-19: NestJS + Prisma, seeded with real data |
 | 16 Frontend | DONE 2026-10-19: Next.js dashboard, 11 e2e flows on the real stack |
-| 17–20 | NOT STARTED |
+| 17 Live market system | DONE 2026-10-19: Kite adapter + replay; live features/predictions match research exactly |
+| 18–20 | NOT STARTED |
 
 ## Known issues
-- No market-data provider credentials; live phases will use the provider interface, MockProvider in tests only.
+- No Kite Connect credentials yet and api.kite.trade / ws.kite.trade are blocked by this environment's
+  network policy, so the Kite adapter is tested on synthetic packets only; real LIVE is unverified.
 - No sector mapping offline (nseindia.com blocked); sector context can only use sector indices.
 - Instrument classification of 8 tickers is uncertain (listed in reports/security_master.md).
 
 ## Commands
 See AGENTS.md. From ml/: `PULSETRADER_DATA_DIR=../data .venv/bin/pulsetrader {fetch,discover,pipeline,security,dataset,audit,classical,deep,optimize,calibrate,robustness}`.
-Tests: `.venv/bin/pytest` (82 passed on 2026-10-19). api/: `npm test`, `npm run test:e2e`. web/: `npm test`, `npm run test:e2e` (docs/frontend.md).
+Tests: `.venv/bin/pytest` (95 passed on 2026-10-19). api/: `npm test`, `npm run test:e2e`. web/: `npm test`, `npm run test:e2e` (docs/frontend.md).

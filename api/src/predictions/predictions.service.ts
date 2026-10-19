@@ -5,7 +5,7 @@ import { MlClient, MlPrediction } from '../ml/ml.client';
 import { ModelsService } from '../models/models.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
-import { recentAccuracy } from '../stocks/stocks.service';
+import { recentAccuracy } from '../stocks/accuracy';
 import { CreatePredictionDto } from './predictions.dto';
 
 /** Stores ML-service predictions and fans them out to SSE subscribers. */
@@ -52,6 +52,32 @@ export class PredictionsService {
       if (!(await this.redis.publish('predictions', row))) this.local.next(row);
     }
     return saved;
+  }
+
+  /** Predictions made by the live pipeline (LIVE or REPLAY mode); idempotent on prediction_id. */
+  async ingest(preds: MlPrediction[], mode: 'LIVE' | 'REPLAY'): Promise<number> {
+    const known = new Set(
+      (
+        await this.prisma.stock.findMany({
+          where: { symbol: { in: [...new Set(preds.map((p) => p.symbol))] } },
+          select: { symbol: true },
+        })
+      ).map((s) => s.symbol),
+    );
+    const rows: Prisma.PredictionUncheckedCreateInput[] = [];
+    for (const p of preds.filter((x) => known.has(x.symbol))) {
+      const mv = `${p.model_id}@v${p.model_version}`;
+      await this.models.ensure(mv);
+      rows.push(toRow(p, mv, null, mode));
+    }
+    const { count } = await this.prisma.prediction.createMany({ data: rows, skipDuplicates: true });
+    for (const row of rows) {
+      const out = { ...row, createdAt: new Date() } as unknown as Prediction;
+      if (!(await this.redis.publish('predictions', out))) this.local.next(out);
+    }
+    if (rows.length < preds.length)
+      this.log.warn(`ingest skipped ${preds.length - rows.length} predictions for unknown symbols`);
+    return count;
   }
 
   async list(
@@ -122,7 +148,8 @@ export class PredictionsService {
 function toRow(
   p: MlPrediction,
   modelVersionId: string,
-  userId: string,
+  userId: string | null,
+  mode?: 'LIVE' | 'REPLAY',
 ): Prisma.PredictionUncheckedCreateInput {
   return {
     id: p.prediction_id,
@@ -148,7 +175,8 @@ function toRow(
     featureVersion: p.feature_version,
     dataVersion: p.data_version,
     dataQuality: p.data_quality,
-    mode: p.data_quality.startsWith('VALIDATED_HISTORICAL') ? 'HISTORICAL' : 'LIVE',
+    // only the token-authenticated live pipeline can store LIVE (or REPLAY) predictions
+    mode: mode ?? (p.data_quality.startsWith('VALIDATED_HISTORICAL') ? 'HISTORICAL' : 'CLIENT_FEATURES'),
     requestedById: userId,
   };
 }

@@ -11,6 +11,7 @@ import { CsrfGuard, JwtAuthGuard } from './common/auth';
 import { validateEnv } from './config/env';
 import { FeaturesModule } from './features/features.module';
 import { HealthModule } from './health/health.module';
+import { LiveModule } from './live/live.module';
 import { MarketDataModule } from './market-data/market-data.module';
 import { MlModule } from './ml/ml.client';
 import { ModelsModule } from './models/models.module';
@@ -45,6 +46,7 @@ import { WatchlistModule } from './watchlist/watchlist.module';
     AuthModule,
     UsersModule,
     StocksModule,
+    LiveModule,
     MarketDataModule,
     PredictionsModule,
     FeaturesModule,

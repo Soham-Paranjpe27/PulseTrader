@@ -16,7 +16,8 @@ export function FeedBadge() {
   const q = useFeedStatus();
   if (q.isLoading) return null;
   const state = q.data?.state ?? 'UNKNOWN';
-  const tone = state === 'LIVE' ? 'up' : state === 'DELAYED' ? 'warn' : 'neutral';
+  const tone =
+    state === 'LIVE' ? 'up' : state === 'DELAYED' ? 'warn' : state === 'REPLAY' ? 'info' : 'neutral';
   return (
     <Badge
       tone={q.isError ? 'down' : tone}
@@ -27,7 +28,11 @@ export function FeedBadge() {
         className={`h-1.5 w-1.5 rounded-full ${state === 'LIVE' ? 'bg-up' : 'bg-muted-foreground'}`}
         aria-hidden
       />
-      {q.isError ? 'API UNREACHABLE' : `FEED ${state}`}
+      {q.isError
+        ? 'API UNREACHABLE'
+        : state === 'REPLAY'
+          ? 'FEED REPLAY (recorded, not live)'
+          : `FEED ${state}`}
     </Badge>
   );
 }

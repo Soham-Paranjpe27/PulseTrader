@@ -5,7 +5,7 @@ import { Public } from '../common/auth';
 import { MlClient } from '../ml/ml.client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
-import { liveStatus } from '../market-data/market-data.service';
+import { LiveService } from '../live/live.service';
 
 @ApiTags('health')
 @Public()
@@ -18,6 +18,7 @@ export class HealthController {
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
     private readonly ml: MlClient,
+    private readonly liveFeed: LiveService,
   ) {}
 
   @Get()
@@ -42,7 +43,7 @@ export class HealthController {
     } catch (e) {
       ml = { reachable: false, error: (e as Error).message };
     }
-    const body = { ready: db, database: db, redis, mlService: ml, marketData: liveStatus() };
+    const body = { ready: db, database: db, redis, mlService: ml, marketData: await this.liveFeed.status() };
     if (!db) throw new ServiceUnavailableException(body);
     return body;
   }

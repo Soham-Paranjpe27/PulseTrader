@@ -34,7 +34,10 @@ test('home shows measured model metrics and honest status', async ({ page }) => 
   await page.goto('/');
   await expect(page.getByTestId('models-table')).toContainText('CANDIDATE');
   await expect(page.getByTestId('models-table')).toContainText('NOT VERIFIED');
-  await expect(page.getByTestId('feed-state')).toHaveText(/FEED DISCONNECTED/);
+  // no real feed runs in tests: DISCONNECTED, or REPLAY while a recorded session is replayed; never LIVE
+  await expect(page.getByTestId('feed-state')).toHaveText(
+    /FEED (DISCONNECTED|REPLAY \(recorded, not live\))/,
+  );
 });
 
 test('registration validates input, then creates the account', async ({ page }) => {
@@ -91,7 +94,8 @@ test('stock detail shows price, chart, indicators, regime and live status', asyn
   await page.goto('/stocks/RELIANCE');
   await expect(page.getByTestId('symbol')).toHaveText('RELIANCE');
   await expect(page.getByTestId('price')).toContainText('₹');
-  await expect(page.getByTestId('live-status')).toContainText('DISCONNECTED');
+  await expect(page.getByTestId('live-status')).toHaveText(/LIVE STATUS: (DISCONNECTED|REPLAY)/);
+  await expect(page.getByText('latest stored daily close (not live)')).toBeVisible();
   const canvas = page.getByTestId('price-chart').locator('canvas').first();
   await expect(canvas).toBeVisible();
   // the chart actually drew at container size (not the 300x150 canvas default)
@@ -126,7 +130,8 @@ test('historical prediction runs on validation data; the test period is locked',
   await expect(page.getByTestId('error-code')).toHaveText('TEST_PERIOD_LOCKED');
 
   await page.goto('/predictions');
-  await expect(page.getByTestId('predictions-table')).toContainText('RELIANCE');
+  await page.getByLabel('Filter by symbol').fill('RELIANCE');
+  await expect(page.getByTestId('predictions-table')).toContainText('VALIDATED_HISTORICAL:validation');
 });
 
 test('watchlist: create, add from the stock page, remove', async ({ page }) => {

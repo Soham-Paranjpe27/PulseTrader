@@ -138,7 +138,13 @@ export function StockView({ symbol }: { symbol: string }) {
   if (detail.isError) return <ErrorView error={detail.error} />;
   const d = detail.data!;
   const lastMinute = intraday.data?.bars.at(-1)?.ts ?? null;
-  const chg = quote?.change ?? null;
+  // a real-time price replaces the stored close only when the feed is real (LIVE or DELAYED);
+  // a replayed session's price is mentioned in the REPLAY notice, never shown as the current price
+  const live =
+    d.livePrice && (d.livePrice.state === 'LIVE' || d.livePrice.state === 'DELAYED') ? d.livePrice : null;
+  const replay = d.livePrice?.state === 'REPLAY' ? d.livePrice : null;
+  const chg = live && quote ? live.close - quote.close : (quote?.change ?? null);
+  const chgPct = live && quote ? live.close / quote.close - 1 : quote?.changePct;
 
   return (
     <div className="flex flex-col gap-4">
@@ -166,19 +172,26 @@ export function StockView({ symbol }: { symbol: string }) {
 
       <Card>
         <CardContent className="grid grid-cols-2 gap-4 pt-4 md:grid-cols-4">
+          {live ? (
+            <Stat
+              label={live.state === 'LIVE' ? 'Live price' : 'Delayed price'}
+              value={inr(live.close)}
+              sub={`${live.state.toLowerCase()} 1-min close, bar ${istTime(live.ts)}`}
+              testId="price"
+            />
+          ) : (
+            <Stat
+              label="Current price"
+              value={inr(quote?.close)}
+              sub="latest stored daily close (not live)"
+              testId="price"
+            />
+          )}
           <Stat
-            label="Current price"
-            value={inr(quote?.close)}
-            sub="latest stored daily close (not live)"
-            testId="price"
-          />
-          <Stat
-            label="Today's change"
-            value={
-              chg === null ? '–' : `${chg > 0 ? '+' : ''}${num(chg)} (${pct(quote?.changePct, 2, true)})`
-            }
+            label={live ? 'Change' : "Today's change"}
+            value={chg === null ? '–' : `${chg > 0 ? '+' : ''}${num(chg)} (${pct(chgPct, 2, true)})`}
             tone={chg === null ? undefined : chg > 0 ? 'up' : chg < 0 ? 'down' : undefined}
-            sub="vs previous stored close"
+            sub={live ? `vs stored close ${day(quote?.tradeDate)}` : 'vs previous stored close'}
           />
           <Stat label="Volume" value={compact(quote?.volume)} sub={`session ${day(quote?.tradeDate)}`} />
           <Stat
@@ -191,8 +204,12 @@ export function StockView({ symbol }: { symbol: string }) {
       </Card>
       {d.liveStatus.state !== 'LIVE' ? (
         <Callout tone="neutral" title={`Feed ${d.liveStatus.state}`}>
-          {d.liveStatus.reason}. Prices and charts show stored historical data ({quote?.source ?? 'no source'}
-          ).
+          {d.liveStatus.state === 'REPLAY'
+            ? `A recorded session is being replayed through the live pipeline to test it. This is not live data${
+                replay ? ` (replay at ${istTime(replay.ts)}: ${inr(replay.close)})` : ''
+              }. `
+            : `${d.liveStatus.reason}. `}
+          Charts show stored historical data ({quote?.source ?? 'no source'}).
         </Callout>
       ) : null}
 

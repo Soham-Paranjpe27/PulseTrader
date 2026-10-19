@@ -34,3 +34,6 @@ coverage/
 data/*.log
 data/*.pid
 data/app/
+data/live/
+reports/*.jsonl
+dump.rdb

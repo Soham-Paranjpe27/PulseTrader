@@ -4,7 +4,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 \
     && rm -rf /var/lib/apt/lists/* && useradd -m app
 COPY pyproject.toml ./
 COPY src ./src
-RUN pip install --no-cache-dir ".[serve]"
+RUN pip install --no-cache-dir ".[serve,live]"
 USER app
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health').status==200 else 1)"

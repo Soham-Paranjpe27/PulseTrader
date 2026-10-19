@@ -2,23 +2,6 @@ import { BadRequestException, HttpException, Injectable, NotFoundException } fro
 import { MlClient } from '../ml/ml.client';
 import { PrismaService } from '../prisma/prisma.service';
 
-export type FeedState = 'LIVE' | 'DELAYED' | 'STALE' | 'DISCONNECTED' | 'INVALID';
-
-/**
- * Live feed state. No authorised live provider is wired in yet (Phase 17), so the state is
- * DISCONNECTED; it is never reported LIVE just because a client is connected.
- */
-export function liveStatus(): { state: FeedState; provider: string | null; reason: string } {
-  const provider = process.env.MARKET_DATA_PROVIDER || null;
-  return {
-    state: 'DISCONNECTED',
-    provider,
-    reason: provider
-      ? `provider ${provider} configured but the live pipeline is not running`
-      : 'no live market data provider configured',
-  };
-}
-
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 @Injectable()

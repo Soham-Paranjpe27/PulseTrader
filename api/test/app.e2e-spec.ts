@@ -39,6 +39,8 @@ describe('PulseTrader API (e2e, real PostgreSQL)', () => {
     process.env.JWT_SECRET = process.env.JWT_SECRET ?? 'e2e-'.padEnd(48, 'x');
     process.env.RATE_LIMIT_PER_MINUTE = '1000';
     process.env.AUTH_RATE_LIMIT_PER_MINUTE = '40';
+    process.env.LIVE_STATUS_KEY = `e2e:live:status:${Date.now()}`;
+    delete process.env.LIVE_INGEST_TOKEN;
     prisma = new PrismaClient({ datasources: { db: { url: process.env.TEST_DATABASE_URL } } });
     await prisma.stock.createMany({
       data: [
@@ -209,6 +211,81 @@ describe('PulseTrader API (e2e, real PostgreSQL)', () => {
     expect((await ask('tell me something')).body.status).toBe('UNSUPPORTED');
     const models = await request(app.getHttpServer()).get('/api/models/active').expect(200);
     expect(models.body.reason).toMatch(/NO_PRODUCTION_MODEL/);
+  });
+
+  it('live ingestion: token auth, replay is never LIVE, predictions stored and listed', async () => {
+    const http = () => request(app.getHttpServer());
+    const status = {
+      state: 'LIVE', // a replay claiming LIVE must still be shown as REPLAY
+      provider: 'historical-replay',
+      mode: 'REPLAY',
+      reason: 'recorded data',
+      lastBarClose: '2025-06-13T10:16:00+05:30',
+      accepted: 10,
+      rejected: {},
+      observedAt: '2025-06-13T10:16:00+05:30',
+      prices: { RELIANCE: { ts: '2025-06-13T10:15:00+05:30', close: 1430.5 } },
+    };
+    await http().post('/api/live/status').send(status).expect(503); // no token configured
+    process.env.LIVE_INGEST_TOKEN = 'i'.repeat(40);
+    await http().post('/api/live/status').send(status).expect(403);
+    await http().post('/api/live/status').set('x-ingest-token', 'wrong').send(status).expect(403);
+    const tok = { 'x-ingest-token': 'i'.repeat(40) };
+    const s = await http().post('/api/live/status').set(tok).send(status).expect(200);
+    expect(s.body.state).toBe('REPLAY');
+    expect((await http().get('/api/market-data/status').expect(200)).body.state).toBe('REPLAY');
+    const price = await http().get('/api/market-data/RELIANCE/live').expect(200);
+    expect(price.body).toMatchObject({ close: 1430.5, state: 'REPLAY', mode: 'REPLAY' });
+    await http().get('/api/market-data/TCS/live').expect(404);
+    const pred = {
+      prediction_id: '11111111-1111-4111-8111-111111111111',
+      symbol: 'RELIANCE',
+      prediction_timestamp: '2025-06-13T10:16:00+05:30',
+      market_data_timestamp: '2025-06-13T10:15:00+05:30',
+      target_timestamp: '2025-06-13T10:20:00+05:30',
+      latency_ms: 0.2,
+      direction: 'NO_PREDICTION',
+      model_class: 'UP',
+      abstain_reason: 'LOW_CONFIDENCE',
+      raw_probability: { down: 0.3, neutral: 0.3, up: 0.4 },
+      calibrated_probability: { down: 0.3, neutral: 0.3, up: 0.4 },
+      confidence: 0.4,
+      prediction_horizon_minutes: 5,
+      label_threshold: 0.001,
+      current_price: 1430.5,
+      predicted_price: null,
+      predicted_return: null,
+      model_id: 'lightgbm-y_5m_10bp-tuned',
+      model_version: 1,
+      model_status: 'CANDIDATE',
+      research_only: true,
+      feature_version: 'features-v2',
+      data_version: 'dataset-v1',
+      data_quality: 'REPLAY_VALIDATED',
+      mode: 'REPLAY',
+      feed_state: 'REPLAY',
+    };
+    await http()
+      .post('/api/live/ingest')
+      .set(tok)
+      .send({ predictions: [{ ...pred, direction: 'MAYBE' }] })
+      .expect(400);
+    const r = await http()
+      .post('/api/live/ingest')
+      .set(tok)
+      .send({ predictions: [pred] })
+      .expect(200);
+    expect(r.body).toEqual({ received: 1, stored: 1 });
+    const again = await http()
+      .post('/api/live/ingest')
+      .set(tok)
+      .send({ predictions: [pred] })
+      .expect(200);
+    expect(again.body.stored).toBe(0); // idempotent on prediction_id
+    const row = await prisma.prediction.findUniqueOrThrow({ where: { id: pred.prediction_id } });
+    expect(row.mode).toBe('REPLAY');
+    expect(row.requestedById).toBeNull();
+    await prisma.prediction.delete({ where: { id: pred.prediction_id } });
   });
 
   it('watchlists are private to their owner', async () => {

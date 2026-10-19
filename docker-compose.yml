@@ -37,11 +37,38 @@ services:
       WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:3000}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
       TRUST_PROXY: 1   # requests arrive through the web app's same-origin proxy
+      MARKET_DATA_PROVIDER: ${MARKET_DATA_PROVIDER:-}
+      LIVE_INGEST_TOKEN: ${LIVE_INGEST_TOKEN:-}   # shared with live-pipeline; empty = ingestion off
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
       ml-service: { condition: service_started }
     ports: ["3001:3001"]
+  # Live pipeline (Phase 17). Not started by default: `docker compose --profile live up live-pipeline`.
+  # MARKET_DATA_PROVIDER=kite needs a Kite Connect key + today's access token and network access to
+  # api.kite.trade / ws.kite.trade. Without them use replay (LIVE_REPLAY_DATE, recorded data, shown as REPLAY).
+  live-pipeline:
+    build: ./ml
+    profiles: [live]
+    command: >
+      sh -c 'pulsetrader live --out /tmp/live_predictions.jsonl
+      $${LIVE_REPLAY_DATE:+--date $$LIVE_REPLAY_DATE --speed $${LIVE_REPLAY_SPEED:-1}}'
+    environment:
+      PULSETRADER_DATA_DIR: /data
+      MARKET_DATA_PROVIDER: ${MARKET_DATA_PROVIDER:-replay}
+      MARKET_DATA_API_KEY: ${MARKET_DATA_API_KEY:-}
+      MARKET_DATA_ACCESS_TOKEN: ${MARKET_DATA_ACCESS_TOKEN:-}
+      LIVE_REPLAY_DATE: ${LIVE_REPLAY_DATE:-}
+      LIVE_REPLAY_SPEED: ${LIVE_REPLAY_SPEED:-1}
+      LIVE_API_URL: http://api:3001/api
+      LIVE_INGEST_TOKEN: ${LIVE_INGEST_TOKEN:-}   # without it predictions only go to the container log file
+    volumes:
+      - ./data/registry:/data/registry:ro
+      - ./data/datasets:/data/datasets:ro
+      - ./data/canonical:/data/canonical:ro
+      - ./data/reference:/data/reference:ro
+    depends_on:
+      api: { condition: service_healthy }
   web:
     build: ./web
     environment:

@@ -28,9 +28,7 @@ from pulsetrader.config import FEATURE_VERSION, HORIZONS, LABEL_VERSION, THRESHO
 from pulsetrader.data.io import safe_name
 from pulsetrader.features.engine import (
     FeatureSet,
-    add_level,
-    add_market_context,
-    add_relative_strength,
+    add_cross_sectional,
     compute_symbol_features,
 )
 from pulsetrader.labels.labels import add_labels, label_name
@@ -168,11 +166,7 @@ def build(data_root: Path, out_dir: Path, cfg: DatasetConfig | None = None) -> d
     for m in months:
         chunk = full.filter(pl.col("trade_date").dt.truncate("1mo") == m).collect()
         fsm = FeatureSet(list(fs.specs))
-        for prefix, idx in market:
-            chunk = add_market_context(chunk, idx, prefix, fsm)
-        if vix is not None:
-            chunk = add_level(chunk, vix, "vix_level", fsm)
-        chunk = add_relative_strength(chunk, fsm)
+        chunk = add_cross_sectional(chunk, market, vix, fsm)
         chunk = assign(chunk, periods, f"label_end_ts_{longest}", cfg.embargo_minutes, starts)
         feature_names = fsm.names
         _f32(chunk.sort("ts", "symbol")).write_parquet(out_dir / f"part-{m:%Y-%m}.parquet")

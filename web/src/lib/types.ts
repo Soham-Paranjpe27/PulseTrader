@@ -3,7 +3,7 @@
 export type Role = 'USER' | 'ADMIN';
 export type Direction = 'UP' | 'DOWN' | 'NEUTRAL' | 'NO_PREDICTION';
 export type ModelStatus = 'EXPERIMENT' | 'CANDIDATE' | 'SHADOW' | 'PRODUCTION' | 'RETIRED' | 'REJECTED';
-export type FeedState = 'LIVE' | 'DELAYED' | 'STALE' | 'DISCONNECTED' | 'INVALID';
+export type FeedState = 'LIVE' | 'DELAYED' | 'STALE' | 'DISCONNECTED' | 'INVALID' | 'REPLAY';
 export type InstrumentType = 'EQUITY' | 'ETF' | 'INDEX' | 'OTHER';
 
 export interface User {
@@ -36,7 +36,19 @@ export interface Stock {
 export interface LiveStatus {
   state: FeedState;
   provider: string | null;
+  mode?: 'LIVE' | 'REPLAY' | null;
   reason: string;
+  lastBarClose?: string | null;
+  latencyP50Seconds?: number | null;
+  observedAt?: string | null;
+}
+
+/** Latest validated 1-minute close from the live pipeline (LIVE feed, or a REPLAY of recorded data). */
+export interface LivePrice {
+  ts: string;
+  close: number;
+  state: FeedState;
+  mode: 'LIVE' | 'REPLAY' | null;
 }
 
 export interface Quote {
@@ -98,6 +110,7 @@ export interface StockDetail {
   latestPrediction: Prediction | null;
   recentAccuracy: RollingAccuracy;
   liveStatus: LiveStatus;
+  livePrice?: LivePrice | null;
 }
 
 export interface DailyBar {

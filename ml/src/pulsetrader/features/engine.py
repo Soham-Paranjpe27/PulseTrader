@@ -318,3 +318,19 @@ def add_relative_strength(
         names.append("sector_rel_ret_15")
     fs.add("RELATIVE", *names)
     return out
+
+
+def add_cross_sectional(
+    frame: pl.DataFrame,
+    market: list[tuple[str, pl.DataFrame]],
+    vix: pl.DataFrame | None,
+    fs: FeatureSet,
+) -> pl.DataFrame:
+    """Market context, VIX level and relative strength for a frame that holds whole cross-sections
+    (every universe symbol at each timestamp). Used by the dataset builder and by the live pipeline,
+    so both produce the same columns in the same order."""
+    for prefix, idx in market:
+        frame = add_market_context(frame, idx, prefix, fs)
+    if vix is not None:
+        frame = add_level(frame, vix, "vix_level", fs)
+    return add_relative_strength(frame, fs)
