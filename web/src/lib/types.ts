@@ -69,6 +69,7 @@ export interface RollingAccuracy {
 }
 
 export interface PredictionOutcome {
+  actualClass: 'UP' | 'DOWN' | 'NEUTRAL' | null;
   actualPrice: number | null;
   actualReturn: number | null;
   predictionError: number | null;
@@ -181,8 +182,41 @@ export interface Accuracy {
   directional: number;
   coverage: number | null;
   evaluated: number;
+  modes?: Record<string, number>;
   rolling: RollingAccuracy;
+  performance?: Performance;
   note: string | null;
+}
+
+export interface ClassMetrics {
+  n: number;
+  accuracy: number | null;
+  balancedAccuracy: number | null;
+  mcc: number | null;
+}
+
+export interface PeriodAccuracy {
+  period: string;
+  evaluated: number;
+  calls: number;
+  coverage: number | null;
+  accuracy: number | null;
+}
+
+/** Live performance over predictions with realised outcomes (API `performance.ts`). */
+export interface Performance {
+  predictions: number;
+  evaluated: number;
+  labelUnavailable: number;
+  fullCoverage: ClassMetrics & { brier: number | null; ece: number | null };
+  calibrated: { brier: number | null; ece: number | null };
+  selective: ClassMetrics & { calls: number; coverage: number | null };
+  rolling: RollingAccuracy;
+  daily: PeriodAccuracy[];
+  weekly: PeriodAccuracy[];
+  monthly: PeriodAccuracy[];
+  window: number;
+  truncated: boolean;
 }
 
 export interface Ready {

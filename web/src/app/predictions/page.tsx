@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { AccuracyGrid, PredictionsTable } from '@/components/predictions-table';
+import { PerformancePanel } from '@/components/performance-panel';
+import { PredictionsTable } from '@/components/predictions-table';
 import { ErrorView, PageHeader } from '@/components/status';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -20,15 +21,17 @@ export default function PredictionsPage() {
   const [symbol, setSymbol] = useState('');
   const [direction, setDirection] = useState('');
   const [model, setModel] = useState('');
+  const [mode, setMode] = useState('');
   const [page, setPage] = useState(1);
   const sym = useDebounced(symbol.trim().toUpperCase());
   const res = usePredictions({
     symbol: sym || undefined,
     direction: direction || undefined,
     model: model || undefined,
+    mode: mode || undefined,
     page,
   });
-  const acc = useAccuracy(sym || undefined);
+  const acc = useAccuracy(sym || undefined, mode || undefined, model || undefined);
   const stream = usePredictionStream(!!me.data);
   const pages = Math.max(1, Math.ceil((res.data?.total ?? 0) / 25));
   return (
@@ -41,7 +44,7 @@ export default function PredictionsPage() {
         <div className="grid gap-4 lg:grid-cols-3">
           <Card className="lg:col-span-2">
             <CardHeader>
-              <CardTitle>Accuracy {sym ? `for ${sym}` : ''}</CardTitle>
+              <CardTitle>Performance {sym ? `for ${sym}` : ''}</CardTitle>
               <CardDescription>
                 {acc.data
                   ? `${acc.data.predictions} predictions, ${acc.data.directional} directional (coverage ${pct(acc.data.coverage)}), ${acc.data.evaluated} with evaluated outcomes.`
@@ -49,8 +52,7 @@ export default function PredictionsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-2">
-              <AccuracyGrid rolling={acc.data?.rolling} />
-              {acc.data?.note ? <p className="text-muted-foreground text-xs">{acc.data.note}</p> : null}
+              <PerformancePanel acc={acc.data} mode={mode} model={model} />
             </CardContent>
           </Card>
           <Card>
@@ -119,6 +121,18 @@ export default function PredictionsPage() {
                     {m.id}
                   </option>
                 ))}
+              </Select>
+              <Select
+                aria-label="Mode"
+                className="w-44"
+                value={mode}
+                onChange={(e) => (setMode(e.target.value), setPage(1))}
+              >
+                <option value="">Any mode</option>
+                <option value="LIVE">LIVE</option>
+                <option value="REPLAY">REPLAY (recorded)</option>
+                <option value="HISTORICAL">HISTORICAL</option>
+                <option value="CLIENT_FEATURES">CLIENT_FEATURES</option>
               </Select>
               <span className="text-muted-foreground ml-auto self-center text-xs">
                 {res.data?.total ?? 0} predictions

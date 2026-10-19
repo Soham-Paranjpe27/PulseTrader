@@ -30,6 +30,7 @@ from pulsetrader.config import FEATURE_VERSION
 from pulsetrader.live.cache import BarCache
 from pulsetrader.live.events import BAR, Bar, FeedState, minute_of_session
 from pulsetrader.live.features import LiveUniverse, check_features, feature_rows
+from pulsetrader.live.outcomes import OutcomeTracker
 from pulsetrader.live.providers import LiveProvider, MarketDataProvider
 from pulsetrader.live.validate import BarValidator, FeedMonitor, ValidationConfig
 from pulsetrader.serve.models import LoadedModel
@@ -39,6 +40,7 @@ log = logging.getLogger(__name__)
 
 class Sink(Protocol):
     def predictions(self, preds: list[dict[str, Any]]) -> None: ...
+    def outcomes(self, outs: list[dict[str, Any]]) -> None: ...
     def status(self, snapshot: dict[str, Any]) -> None: ...
 
 
@@ -46,9 +48,13 @@ class Sink(Protocol):
 class MemorySink:
     preds: list[dict[str, Any]] = field(default_factory=list)
     statuses: list[dict[str, Any]] = field(default_factory=list)
+    outs: list[dict[str, Any]] = field(default_factory=list)
 
     def predictions(self, preds: list[dict[str, Any]]) -> None:
         self.preds.extend(preds)
+
+    def outcomes(self, outs: list[dict[str, Any]]) -> None:
+        self.outs.extend(outs)
 
     def status(self, snapshot: dict[str, Any]) -> None:
         self.statuses.append(snapshot)
@@ -56,16 +62,27 @@ class MemorySink:
 
 @dataclass
 class JsonlSink:
+    """Predictions to `path`, outcomes to `path` with an `.outcomes.jsonl` suffix."""
+
     path: Path
 
     def __post_init__(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.path.write_text("")
+        self.outcomes_path = self.path.with_suffix(".outcomes.jsonl")
+        self.outcomes_path.write_text("")
+
+    @staticmethod
+    def _append(path: Path, rows: list[dict[str, Any]]) -> None:
+        with path.open("a") as f:
+            for r in rows:
+                f.write(json.dumps(r, default=str) + "\n")
 
     def predictions(self, preds: list[dict[str, Any]]) -> None:
-        with self.path.open("a") as f:
-            for p in preds:
-                f.write(json.dumps(p, default=str) + "\n")
+        self._append(self.path, preds)
+
+    def outcomes(self, outs: list[dict[str, Any]]) -> None:
+        self._append(self.outcomes_path, outs)
 
     def status(self, snapshot: dict[str, Any]) -> None:
         return None
@@ -100,6 +117,13 @@ class ApiSink:
         for i in range(0, len(preds), 50):  # stays under the API body limit (100 kB)
             self._post("/live/ingest", {"predictions": preds[i : i + 50]})
 
+    def outcomes(self, outs: list[dict[str, Any]]) -> None:
+        keep = ("prediction_id", "actual_price", "actual_return", "actual_class", "prediction_error",
+                "direction_correct")  # fmt: skip
+        rows = [{k: o[k] for k in keep} for o in outs]
+        for i in range(0, len(rows), 200):
+            self._post("/live/outcomes", {"outcomes": rows[i : i + 200]})
+
     def status(self, snapshot: dict[str, Any]) -> None:
         self._post("/live/status", snapshot)
 
@@ -109,6 +133,7 @@ class PipelineConfig:
     max_staleness_s: float = 120.0
     finalize_grace: timedelta = timedelta(seconds=4)
     keep_features: bool = False  # keep feature rows in memory (parity checks)
+    track_outcomes: bool = True  # evaluate every prediction after its horizon (Phase 18)
     validation: ValidationConfig = field(default_factory=ValidationConfig)
 
 
@@ -133,6 +158,7 @@ class LivePipeline:
         self._avail: datetime | None = None
         self._last_now: datetime | None = None
         self._done: datetime | None = None
+        self.tracker = OutcomeTracker()
         for m in self.models:
             if m.feature_version != FEATURE_VERSION:
                 raise ValueError(f"{m.record.key} uses {m.feature_version}, engine is {FEATURE_VERSION}")
@@ -188,7 +214,18 @@ class LivePipeline:
             and state not in (FeedState.INVALID, FeedState.DISCONNECTED)
         ):
             self.predict(ts, now, state)
+        self.resolve_outcomes()
         self.publish_status(now)
+
+    def resolve_outcomes(self, final: bool = False) -> list[dict[str, Any]]:
+        if not self.cfg.track_outcomes:
+            return []
+        outs = self.tracker.resolve(self.cache, self._done, final)
+        if outs:
+            self.stats["outcomes"] = self.stats.get("outcomes", 0) + len(outs)
+            for s in self.sinks:
+                s.outcomes(outs)
+        return outs
 
     def predict(self, ts: datetime, now: datetime, state: FeedState) -> list[dict[str, Any]]:
         t0 = time.perf_counter()
@@ -218,6 +255,8 @@ class LivePipeline:
         self.stats["predictions"] += len(out)
         for s in self.sinks:
             s.predictions(out)
+        if self.cfg.track_outcomes:
+            self.tracker.add(out)
         return out
 
     async def run(self, max_bars: int | None = None) -> dict[str, Any]:
@@ -241,6 +280,7 @@ class LivePipeline:
         if self.current is not None:
             self.finalize(self.current)
             self.current = None
+        self.resolve_outcomes(final=True)  # stream ended: no later bar can arrive
         self.publish_status(self._last_now or datetime.now().astimezone())
         fsec = self.stats["feature_seconds"]
         return {

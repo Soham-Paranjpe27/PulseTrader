@@ -77,7 +77,13 @@ export const useIndicators = (symbol: string, date: string | null) =>
     staleTime: 10 * 60_000,
   });
 
-export function usePredictions(p: { symbol?: string; direction?: string; model?: string; page: number }) {
+export function usePredictions(p: {
+  symbol?: string;
+  direction?: string;
+  model?: string;
+  mode?: string;
+  page: number;
+}) {
   return useQuery({
     queryKey: ['predictions', p],
     queryFn: () => get<Page<Prediction>>(`/predictions${qs({ ...p, pageSize: 25 })}`),
@@ -85,8 +91,8 @@ export function usePredictions(p: { symbol?: string; direction?: string; model?:
   });
 }
 
-export const useAccuracy = (symbol?: string) =>
+export const useAccuracy = (symbol?: string, mode?: string, model?: string) =>
   useQuery({
-    queryKey: ['accuracy', symbol ?? null],
-    queryFn: () => get<Accuracy>(`/predictions/accuracy${qs({ symbol })}`),
+    queryKey: ['accuracy', symbol ?? null, mode ?? null, model ?? null],
+    queryFn: () => get<Accuracy>(`/predictions/accuracy${qs({ symbol, mode, model })}`),
   });

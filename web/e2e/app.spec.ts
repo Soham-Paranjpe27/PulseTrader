@@ -131,7 +131,25 @@ test('historical prediction runs on validation data; the test period is locked',
 
   await page.goto('/predictions');
   await page.getByLabel('Filter by symbol').fill('RELIANCE');
+  await page.getByLabel('Mode', { exact: true }).selectOption('HISTORICAL'); // replayed rows would fill the first page
   await expect(page.getByTestId('predictions-table')).toContainText('VALIDATED_HISTORICAL:validation');
+});
+
+test('live performance: replayed predictions are scored and labelled REPLAY, not live', async ({ page }) => {
+  // needs a replayed session in the database (`pulsetrader live --date ...` into the API)
+  await login(page);
+  await page.goto('/predictions');
+  await page.getByLabel('Mode', { exact: true }).selectOption('REPLAY');
+  await expect(page.getByTestId('performance-mode')).toContainText('REPLAY results, not live ones');
+  const panel = page.getByTestId('performance-panel');
+  await expect(panel).toContainText('Call accuracy');
+  await expect(panel).toContainText('balanced');
+  await expect(panel).toContainText('MCC');
+  await expect(panel).toContainText('coverage');
+  await expect(page.getByTestId('daily-accuracy')).toContainText(/\d{4}-\d{2}-\d{2}/);
+  await expect(page.getByTestId('outcome').first()).toContainText(/actual (UP|DOWN|NEUTRAL)/);
+  await expect(page.getByTestId('predictions-table')).toContainText('REPLAY');
+  await expect(page.getByTestId('predictions-table')).not.toContainText(/\bLIVE\b/);
 });
 
 test('watchlist: create, add from the stock page, remove', async ({ page }) => {

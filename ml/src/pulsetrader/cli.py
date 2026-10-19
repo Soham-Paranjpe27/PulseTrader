@@ -272,6 +272,27 @@ def cmd_live_parity(args: argparse.Namespace) -> None:
               [(m["model"], m["max_abs_prob_diff"]) for m in r["predictions"]])  # fmt: skip
 
 
+def cmd_live_eval(args: argparse.Namespace) -> None:
+    """Phase 18: replay validation sessions with outcome tracking and evaluate them (REPLAY)."""
+    from datetime import date
+
+    from pulsetrader.live.replay_eval import render, run, validation_sessions
+
+    p = data_paths()
+    days = (
+        [date.fromisoformat(d) for d in args.dates]
+        if args.dates
+        else validation_sessions(p.root, args.name, args.last)
+    )
+    res = run(p.root, days, args.name, Path(args.out))
+    reports = Path(args.reports)
+    reports.mkdir(parents=True, exist_ok=True)
+    (reports / "phase18_live_eval.md").write_text(render(res))
+    (reports / "phase18_live_eval.json").write_text(json.dumps(res, indent=1, default=str))
+    for e in res["evaluation"]:
+        print(e["model"], e["selective"], e["full_coverage"]["mcc"] if e["full_coverage"] else None)
+
+
 def cmd_kite_login(args: argparse.Namespace) -> None:
     """Without --request-token: print the Zerodha login URL. With it: print a one-day access token
     for MARKET_DATA_ACCESS_TOKEN (not stored anywhere by this command)."""
@@ -368,6 +389,15 @@ def main() -> None:
     lp.add_argument("--name", default="core100_s5")
     lp.add_argument("--reports", default="../reports")
     lp.set_defaults(func=cmd_live_parity)
+    le = sub.add_parser("live-eval", help="Phase 18: replay validation sessions, score live predictions")
+    le.add_argument(
+        "--dates", nargs="*", help="sessions YYYY-MM-DD (default: the last --last validation days)"
+    )
+    le.add_argument("--last", type=int, default=20)
+    le.add_argument("--name", default="core100_s5")
+    le.add_argument("--out", default="../data/live/phase18_replay.jsonl")
+    le.add_argument("--reports", default="../reports")
+    le.set_defaults(func=cmd_live_eval)
     kl = sub.add_parser("kite-login", help="Zerodha Kite Connect login URL / request-token exchange")
     kl.add_argument("--request-token")
     kl.set_defaults(func=cmd_kite_login)

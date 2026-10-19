@@ -213,7 +213,7 @@ describe('PulseTrader API (e2e, real PostgreSQL)', () => {
     expect(models.body.reason).toMatch(/NO_PRODUCTION_MODEL/);
   });
 
-  it('live ingestion: token auth, replay is never LIVE, predictions stored and listed', async () => {
+  it('live ingestion: token auth, replay is never LIVE, predictions and outcomes stored', async () => {
     const http = () => request(app.getHttpServer());
     const status = {
       state: 'LIVE', // a replay claiming LIVE must still be shown as REPLAY
@@ -285,7 +285,60 @@ describe('PulseTrader API (e2e, real PostgreSQL)', () => {
     const row = await prisma.prediction.findUniqueOrThrow({ where: { id: pred.prediction_id } });
     expect(row.mode).toBe('REPLAY');
     expect(row.requestedById).toBeNull();
-    await prisma.prediction.delete({ where: { id: pred.prediction_id } });
+
+    // Phase 18: realised outcomes after the horizon, and live performance per mode
+    const call = { ...pred, prediction_id: '22222222-2222-4222-8222-222222222222', direction: 'UP' };
+    await http()
+      .post('/api/live/ingest')
+      .set(tok)
+      .send({ predictions: [call] })
+      .expect(200);
+    const outcome = (id: string, cls: string | null, ok: boolean | null) => ({
+      prediction_id: id,
+      actual_price: 1432.0,
+      actual_return: 0.00105,
+      actual_class: cls,
+      prediction_error: null,
+      direction_correct: ok,
+    });
+    await http()
+      .post('/api/live/outcomes')
+      .send({ outcomes: [outcome(call.prediction_id, 'UP', true)] })
+      .expect(403);
+    await http()
+      .post('/api/live/outcomes')
+      .set(tok)
+      .send({ outcomes: [outcome(call.prediction_id, null, true)] }) // correctness without a label
+      .expect(400);
+    const o = await http()
+      .post('/api/live/outcomes')
+      .set(tok)
+      .send({
+        outcomes: [
+          outcome(pred.prediction_id, 'UP', null), // abstention: no correctness
+          outcome(call.prediction_id, 'UP', true),
+          outcome('33333333-3333-4333-8333-333333333333', 'DOWN', false), // unknown prediction
+        ],
+      })
+      .expect(200);
+    expect(o.body).toEqual({ received: 3, stored: 2, unknown: 1 });
+    const acc = await http().get('/api/predictions/accuracy?mode=REPLAY&symbol=RELIANCE').expect(200);
+    expect(acc.body).toMatchObject({ predictions: 2, directional: 1, evaluated: 1, note: null });
+    expect(acc.body.performance.selective).toMatchObject({ calls: 1, coverage: 0.5, accuracy: 1 });
+    expect(acc.body.performance.fullCoverage).toMatchObject({ n: 2, accuracy: 1 });
+    expect(acc.body.performance.daily).toEqual([
+      { period: '2025-06-13', evaluated: 2, calls: 1, coverage: 0.5, accuracy: 1 },
+    ]);
+    expect(acc.body.rolling.last_20).toEqual({ n: 1, accuracy: 1 });
+    expect((await http().get('/api/predictions/accuracy?mode=LIVE').expect(200)).body.evaluated).toBe(0);
+    await http().get('/api/predictions/accuracy?mode=MAGIC').expect(400);
+    const listed = await http().get('/api/predictions?mode=REPLAY&symbol=RELIANCE').expect(200);
+    expect(listed.body.total).toBe(2);
+    expect(listed.body.items.find((x: { id: string }) => x.id === call.prediction_id).outcome).toMatchObject({
+      actualClass: 'UP',
+      directionCorrect: true,
+    });
+    await prisma.prediction.deleteMany({ where: { id: { in: [pred.prediction_id, call.prediction_id] } } });
   });
 
   it('watchlists are private to their owner', async () => {

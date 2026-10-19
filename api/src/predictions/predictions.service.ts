@@ -5,8 +5,33 @@ import { MlClient, MlPrediction } from '../ml/ml.client';
 import { ModelsService } from '../models/models.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
-import { recentAccuracy } from '../stocks/accuracy';
+import { performance } from './performance';
 import { CreatePredictionDto } from './predictions.dto';
+
+const PERFORMANCE_ROWS = 20_000;
+
+interface PerfRow {
+  ts: Date;
+  direction: string;
+  modelClass: string;
+  actualClass: string | null;
+  directionCorrect: boolean | null;
+  rd: number | null;
+  rn: number | null;
+  ru: number | null;
+  cd: number | null;
+  cn: number | null;
+  cu: number | null;
+}
+
+export interface OutcomeInput {
+  prediction_id: string;
+  actual_price: number | null;
+  actual_return: number | null;
+  actual_class: 'UP' | 'DOWN' | 'NEUTRAL' | null;
+  prediction_error: number | null;
+  direction_correct: boolean | null;
+}
 
 /** Stores ML-service predictions and fans them out to SSE subscribers. */
 @Injectable()
@@ -81,7 +106,7 @@ export class PredictionsService {
   }
 
   async list(
-    where: { symbol?: string; modelVersionId?: string; direction?: string },
+    where: { symbol?: string; modelVersionId?: string; direction?: string; mode?: string },
     page: number,
     size: number,
   ) {
@@ -89,6 +114,7 @@ export class PredictionsService {
       ...(where.symbol ? { symbol: where.symbol } : {}),
       ...(where.modelVersionId ? { modelVersionId: where.modelVersionId } : {}),
       ...(where.direction ? { direction: where.direction as Prediction['direction'] } : {}),
+      ...(where.mode ? { mode: where.mode } : {}),
     };
     const [total, items] = await Promise.all([
       this.prisma.prediction.count({ where: w }),
@@ -112,27 +138,92 @@ export class PredictionsService {
     return p;
   }
 
-  async accuracy(symbol?: string, modelVersionId?: string) {
+  /** Upserts realised outcomes for stored predictions; outcomes of unknown predictions are skipped. */
+  async storeOutcomes(outs: OutcomeInput[]): Promise<{ stored: number; unknown: number }> {
+    const known = new Set(
+      (
+        await this.prisma.prediction.findMany({
+          where: { id: { in: outs.map((o) => o.prediction_id) } },
+          select: { id: true },
+        })
+      ).map((p) => p.id),
+    );
+    const rows = outs.filter((o) => known.has(o.prediction_id));
+    await this.prisma.$transaction(
+      rows.map((o) => {
+        const data = {
+          actualPrice: o.actual_price,
+          actualReturn: o.actual_return,
+          actualClass: o.actual_class,
+          predictionError: o.prediction_error,
+          directionCorrect: o.direction_correct,
+        };
+        return this.prisma.predictionOutcome.upsert({
+          where: { predictionId: o.prediction_id },
+          create: { predictionId: o.prediction_id, ...data },
+          update: { ...data, evaluatedAt: new Date() },
+        });
+      }),
+    );
+    return { stored: rows.length, unknown: outs.length - rows.length };
+  }
+
+  async accuracy(symbol?: string, modelVersionId?: string, mode?: string) {
     const where: Prisma.PredictionWhereInput = {
       ...(symbol ? { symbol } : {}),
       ...(modelVersionId ? { modelVersionId } : {}),
+      ...(mode ? { mode } : {}),
     };
-    const [total, directional, evaluated] = await Promise.all([
+    const [total, directional, evaluated, modes] = await Promise.all([
       this.prisma.prediction.count({ where }),
       this.prisma.prediction.count({ where: { ...where, direction: { in: ['UP', 'DOWN'] } } }),
       this.prisma.prediction.count({
-        where: { ...where, direction: { in: ['UP', 'DOWN'] }, outcome: { isNot: null } },
+        where: { ...where, direction: { in: ['UP', 'DOWN'] }, outcome: { directionCorrect: { not: null } } },
       }),
+      this.prisma.prediction.groupBy({ by: ['mode'], where, _count: { _all: true } }),
     ]);
+    // performance over the most recent predictions with an outcome (bounded for the request); one
+    // compact SQL query because the JSON probability columns make ORM row mapping slow at this size
+    const cond = [
+      symbol ? Prisma.sql`p.symbol = ${symbol}` : null,
+      modelVersionId ? Prisma.sql`p."modelVersionId" = ${modelVersionId}` : null,
+      mode ? Prisma.sql`p.mode = ${mode}` : null,
+    ].filter((c): c is Prisma.Sql => c !== null);
+    const rows = await this.prisma.$queryRaw<PerfRow[]>`
+      SELECT p."marketDataTimestamp" AS ts, p.direction::text AS direction, p."modelClass"::text AS "modelClass",
+             o."actualClass"::text AS "actualClass", o."directionCorrect" AS "directionCorrect",
+             (p."rawProbability"->>'down')::float8 AS rd, (p."rawProbability"->>'neutral')::float8 AS rn,
+             (p."rawProbability"->>'up')::float8 AS ru, (p."calibratedProbability"->>'down')::float8 AS cd,
+             (p."calibratedProbability"->>'neutral')::float8 AS cn, (p."calibratedProbability"->>'up')::float8 AS cu
+      FROM "Prediction" p JOIN "PredictionOutcome" o ON o."predictionId" = p.id
+      ${cond.length ? Prisma.sql`WHERE ${Prisma.join(cond, ' AND ')}` : Prisma.empty}
+      ORDER BY p."marketDataTimestamp" DESC
+      LIMIT ${PERFORMANCE_ROWS}`;
+    // at the cap the oldest Indian-market day is usually cut part way: drop it so every day is whole
+    const truncated = rows.length === PERFORMANCE_ROWS;
+    const dayOf = (d: Date) => new Date(d.getTime() + 330 * 60_000).toISOString().slice(0, 10);
+    const oldest = truncated ? dayOf(rows[rows.length - 1].ts) : null;
+    const used = oldest ? rows.filter((r) => dayOf(r.ts) !== oldest) : rows;
+    const perf = performance(
+      used.map((r) => ({
+        ts: r.ts,
+        direction: r.direction,
+        modelClass: r.modelClass,
+        actualClass: r.actualClass,
+        directionCorrect: r.directionCorrect,
+        rawProbability: { down: r.rd, neutral: r.rn, up: r.ru },
+        calibratedProbability: { down: r.cd, neutral: r.cn, up: r.cu },
+      })),
+    );
     return {
       predictions: total,
       directional,
       coverage: total ? directional / total : null,
       evaluated,
-      rolling: await recentAccuracy(this.prisma, where),
-      note: evaluated
-        ? null
-        : 'DATA_UNAVAILABLE: no prediction outcomes evaluated yet (live evaluation is Phase 18)',
+      modes: Object.fromEntries(modes.map((m) => [m.mode, m._count._all])),
+      rolling: perf.rolling,
+      performance: { ...perf, window: used.length, truncated },
+      note: evaluated ? null : 'DATA_UNAVAILABLE: no directional prediction has an evaluated outcome yet',
     };
   }
 

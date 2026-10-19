@@ -8,7 +8,7 @@ import hashlib
 import json
 import struct
 from dataclasses import dataclass, field
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -16,9 +16,11 @@ import polars as pl
 import pytest
 
 from pulsetrader.config import FEATURE_VERSION
+from pulsetrader.labels.labels import label_name
 from pulsetrader.live import kite
 from pulsetrader.live.cache import BarCache
 from pulsetrader.live.candles import CandleAggregator
+from pulsetrader.live.evaluate import evaluate, round_trip_cost_bp
 from pulsetrader.live.events import IST, Bar, FeedState, Tick, in_session
 from pulsetrader.live.features import FeatureMismatch, LiveUniverse, check_features
 from pulsetrader.live.pipeline import LivePipeline, MemorySink, PipelineConfig
@@ -196,8 +198,21 @@ class StubModel:
 
     def predict(self, items: list[dict[str, Any]], now: datetime | None = None) -> list[dict[str, Any]]:
         self.seen += [{**it, "now": now} for it in items]
-        return [{"symbol": it["symbol"], "market_data_timestamp": it["market_data_timestamp"].isoformat()}
-                for it in items]  # fmt: skip
+        n0 = len(self.seen) - len(items)
+        out = []
+        for i, it in enumerate(items):
+            k = (n0 + i) % 3  # deterministic DOWN / NEUTRAL / UP calls
+            direction = ("DOWN", "NEUTRAL", "UP")[k]
+            pr = {c: 0.6 if j == k else 0.2 for j, c in enumerate(("down", "neutral", "up"))}
+            ts = it["market_data_timestamp"]
+            out.append({
+                "prediction_id": f"stub-{it['symbol']}-{ts.isoformat()}",
+                "model_id": "stub", "model_version": 1, "symbol": it["symbol"],
+                "market_data_timestamp": ts.isoformat(), "prediction_horizon_minutes": 5,
+                "direction": direction, "model_class": direction, "label_threshold": 0.001,
+                "raw_probability": pr, "calibrated_probability": pr,
+            })  # fmt: skip
+        return out
 
 
 def _research_rows(root, day):
@@ -291,3 +306,53 @@ def test_feature_check_rejects_version_or_name_drift():
         check_features(["a"], ["b"], FEATURE_VERSION, FEATURE_VERSION)
     with pytest.raises(FeatureMismatch):
         check_features(["a"], ["a"], FEATURE_VERSION, "features-v0")
+
+
+def test_replay_outcomes_equal_research_labels_and_evaluate(golden_dataset):
+    """Phase 18: each prediction's realised outcome equals the dataset label for the same row."""
+    root = golden_dataset
+    day = _validation_day(root)
+    uni = LiveUniverse.from_manifest(root / "datasets" / "ds")
+    feats = json.loads((root / "datasets" / "ds" / "features.json").read_text())["features"]
+    sink = MemorySink()
+    pipe = LivePipeline(HistoricalProvider(root, day), uni, [StubModel(feats)], [sink],  # type: ignore[list-item]
+                        PipelineConfig())  # fmt: skip
+    res = asyncio.run(pipe.run())
+    assert res["outcomes"] == res["predictions"] == len(sink.outs) > 0
+    assert not pipe.tracker.pending
+    o = pl.DataFrame(sink.outs, infer_schema_length=None).with_columns(
+        pl.col("market_data_timestamp").str.to_datetime(time_zone="Asia/Kolkata").alias("ts")
+    )
+    lab = label_name(5, 0.001)
+    research = _research_rows(root, day).select("symbol", "ts", "fret_5", lab)
+    j = o.join(research, on=["symbol", "ts"], how="inner")
+    assert j.height == o.height
+    want = j[lab].replace_strict({-1: "DOWN", 0: "NEUTRAL", 1: "UP"}, default=None)
+    assert ((want == j["actual_class"]) | (want.is_null() & j["actual_class"].is_null())).all()
+    assert (j["actual_return"].is_null() == j["fret_5"].is_null()).all()
+    assert ((j["actual_return"] - j["fret_5"].cast(pl.Float64)).abs().drop_nulls() < 1e-6).all()
+    # the last bars of the session have no bar 5 minutes later: no label, no correctness
+    late = o.filter(pl.col("ts").dt.time() > time(15, 24))
+    assert late.height and late["actual_class"].is_null().all() and late["direction_correct"].is_null().all()
+    neutral = o.filter(pl.col("direction") == "NEUTRAL")
+    assert neutral["direction_correct"].is_null().all()
+    called = o.filter(pl.col("direction") != "NEUTRAL").drop_nulls("actual_class")
+    assert (called["direction_correct"] == (called["direction"] == called["actual_class"])).all()
+
+    (ev,) = evaluate(sink.outs)
+    assert ev["mode"] == "REPLAY" and ev["predictions"] == o.height
+    assert ev["evaluated"] == o.drop_nulls("actual_class").height
+    sel = ev["selective"]
+    assert sel["calls"] == called.height
+    assert sel["coverage"] == pytest.approx(called.height / ev["evaluated"])
+    assert sel["accuracy"] == pytest.approx(called["direction_correct"].cast(pl.Float64).mean())
+    for key in ("accuracy", "balanced_accuracy", "mcc", "brier", "ece_top"):
+        assert ev["full_coverage"][key] is not None
+    assert ev["rolling"]["last_20"]["n"] == min(20, called.height)
+    assert sum(d["calls"] for d in ev["daily"]) == called.height
+    gross = called["actual_return"] * pl.Series([1.0 if d == "UP" else -1.0 for d in called["direction"]])
+    assert ev["paper"]["mean_net_bp"] == pytest.approx(gross.mean() * 1e4 - round_trip_cost_bp())  # type: ignore[operator]
+
+
+def test_round_trip_cost_matches_backtest_costs():
+    assert 9.0 < round_trip_cost_bp() < 12.0

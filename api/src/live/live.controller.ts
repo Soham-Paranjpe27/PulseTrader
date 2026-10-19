@@ -63,4 +63,14 @@ export class LiveController {
   ingest(@Body() body: unknown) {
     return this.live.ingest(body);
   }
+
+  @Public()
+  @SkipCsrf()
+  @SkipThrottle()
+  @UseGuards(IngestTokenGuard)
+  @Post('outcomes')
+  @HttpCode(200)
+  outcomes(@Body() body: unknown) {
+    return this.live.outcomes(body);
+  }
 }

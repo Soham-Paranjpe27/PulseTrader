@@ -60,16 +60,29 @@ export function PredictionsTable({ rows, showSymbol = true }: { rows: Prediction
             </TD>
             <TD className="text-muted-foreground text-xs">{p.dataQuality}</TD>
             <TD className="text-muted-foreground text-xs">
-              {p.outcome?.directionCorrect === true
-                ? 'correct'
-                : p.outcome?.directionCorrect === false
-                  ? 'wrong'
-                  : 'not evaluated'}
+              <Outcome p={p} />
             </TD>
           </TR>
         ))}
       </TBody>
     </Table>
+  );
+}
+
+/** Realised class and return after the horizon, and whether the UP/DOWN call was right. */
+function Outcome({ p }: { p: Prediction }) {
+  const o = p.outcome;
+  if (!o) return <>not evaluated</>;
+  if (!o.actualClass) return <>no label (target bar missing)</>;
+  const ret =
+    o.actualReturn === null ? '' : ` ${o.actualReturn >= 0 ? '+' : ''}${(o.actualReturn * 100).toFixed(2)}%`;
+  const verdict =
+    o.directionCorrect === true ? 'correct' : o.directionCorrect === false ? 'wrong' : 'no call';
+  return (
+    <span data-testid="outcome">
+      actual {o.actualClass}
+      {ret} · {verdict}
+    </span>
   );
 }
 

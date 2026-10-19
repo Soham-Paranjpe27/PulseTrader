@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { MlPrediction } from '../ml/ml.client';
-import { PredictionsService } from '../predictions/predictions.service';
+import { OutcomeInput, PredictionsService } from '../predictions/predictions.service';
 import { RedisService } from '../redis/redis.service';
 
 export type FeedState = 'LIVE' | 'DELAYED' | 'STALE' | 'DISCONNECTED' | 'INVALID' | 'REPLAY';
@@ -59,6 +59,23 @@ export function validPrediction(p: unknown): p is MlPrediction {
     str(p.data_version) &&
     str(p.data_quality) &&
     (p.mode === 'LIVE' || p.mode === 'REPLAY')
+  );
+}
+
+const numOrNull = (v: unknown) => v === null || num(v);
+
+/** Shape check for one realised outcome (`live/outcomes.py`). */
+export function validOutcome(o: unknown): o is OutcomeInput {
+  if (!isObj(o)) return false;
+  return (
+    str(o.prediction_id) &&
+    numOrNull(o.actual_price) &&
+    numOrNull(o.actual_return) &&
+    numOrNull(o.prediction_error) &&
+    (o.actual_class === null || ['UP', 'DOWN', 'NEUTRAL'].includes(o.actual_class as string)) &&
+    (o.direction_correct === null || typeof o.direction_correct === 'boolean') &&
+    // no outcome without a label: correctness needs a realised class
+    (o.direction_correct === null || o.actual_class !== null)
   );
 }
 
@@ -158,5 +175,14 @@ export class LiveService {
       if (group.length) stored += await this.preds.ingest(group, mode);
     }
     return { received: preds.length, stored };
+  }
+
+  async outcomes(body: unknown): Promise<{ received: number; stored: number; unknown: number }> {
+    const list = isObj(body) && Array.isArray(body.outcomes) ? body.outcomes : null;
+    if (!list || list.length === 0 || list.length > 500)
+      throw new BadRequestException('outcomes must be a non-empty array of at most 500');
+    const bad = list.findIndex((o) => !validOutcome(o));
+    if (bad >= 0) throw new BadRequestException(`outcome ${bad} is malformed`);
+    return { received: list.length, ...(await this.preds.storeOutcomes(list as OutcomeInput[])) };
   }
 }
