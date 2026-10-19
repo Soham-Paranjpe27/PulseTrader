@@ -16,6 +16,7 @@ import { SkipThrottle } from '@nestjs/throttler';
 import { createHash, timingSafeEqual } from 'node:crypto';
 import type { Request } from 'express';
 import { Public, SkipCsrf } from '../common/auth';
+import { MonitoringService } from '../monitoring/monitoring.service';
 import { LiveService } from './live.service';
 
 const digest = (s: string) => createHash('sha256').update(s).digest();
@@ -36,7 +37,10 @@ export class IngestTokenGuard implements CanActivate {
 @ApiTags('live')
 @Controller('live')
 export class LiveController {
-  constructor(private readonly live: LiveService) {}
+  constructor(
+    private readonly live: LiveService,
+    private readonly monitoring: MonitoringService,
+  ) {}
 
   @Public()
   @Get('status')
@@ -72,5 +76,16 @@ export class LiveController {
   @HttpCode(200)
   outcomes(@Body() body: unknown) {
     return this.live.outcomes(body);
+  }
+
+  /** Drift and latency reports from the live pipeline (Phase 19); MODEL_DRIFT_DETECTED raises an alert. */
+  @Public()
+  @SkipCsrf()
+  @SkipThrottle()
+  @UseGuards(IngestTokenGuard)
+  @Post('monitoring')
+  @HttpCode(200)
+  monitoringReports(@Body() body: unknown) {
+    return this.monitoring.ingestReports(body);
   }
 }

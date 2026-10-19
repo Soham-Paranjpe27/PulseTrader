@@ -15,6 +15,7 @@ const LINKS = [
   { href: '/portfolio', label: 'Portfolio' },
   { href: '/alerts', label: 'Alerts' },
   { href: '/research', label: 'Research' },
+  { href: '/monitoring', label: 'Monitoring' },
 ];
 
 export function Nav() {

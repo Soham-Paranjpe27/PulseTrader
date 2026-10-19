@@ -1,19 +1,18 @@
 # knowledge.md — PulseTrader V4 project state
 
-Last updated: 2026-10-19 (phase 18 done).
+Last updated: 2026-10-19 (phase 19 done).
 
 ## Current phase
-Phases 0–18 DONE on real data (Phase 18 finished 2026-10-19). Next: Phase 19 (monitoring).
+Phases 0–19 DONE on real data (Phase 19 finished 2026-10-19). Next: Phase 20 (production hardening).
 
 ## Next exact action
-1. Phase 19 (monitoring, spec sections 48-50): drift and health monitoring on top of the Phase 18
-   outcomes: feature drift (PSI/KS vs training) per feature from live feature rows, prediction/confidence
-   drift, rolling live accuracy/MCC/coverage vs validation with alert thresholds, feed health history,
-   API/ML latency and error rates; surface on the dashboard and as alerts. Keep LIVE and REPLAY separate.
-   Real LIVE still needs the user's Kite Connect key/secret + daily access token and network access to
-   api.kite.trade / ws.kite.trade (both blocked here). Local stack: `service postgresql start;
-   redis-server --daemonize yes`; ML :8000, API :3001 (`AUTH_RATE_LIMIT_PER_MINUTE=40 TRUST_PROXY=1
-   LIVE_INGEST_TOKEN=... node dist/main.js`), web :3000 (docs/frontend.md), replay: docs/live-data.md.
+1. Phase 20 (production hardening, spec phase 20): security testing, load testing, failure testing
+   (ML/Redis/DB/feed down -> alerts and graceful errors), database testing, ML reproducibility, Docker
+   validation, CI/CD validation. Real LIVE still needs the user's Kite Connect key/secret + daily access
+   token and network access to api.kite.trade / ws.kite.trade (both blocked here). Local stack:
+   `service postgresql start; redis-server --daemonize yes`; ML :8000, API :3001
+   (`AUTH_RATE_LIMIT_PER_MINUTE=40 TRUST_PROXY=1 LIVE_INGEST_TOKEN=... node dist/main.js`), web :3000
+   (docs/frontend.md), replay: docs/live-data.md, monitoring: docs/monitoring.md.
 2. If the container was recycled, data/ is gone: torch needs `pip install torch --index-url
    https://download.pytorch.org/whl/cpu`, then `pulsetrader fetch`, `pipeline`, `security`, `dataset`
    (~35 min), then `pulsetrader optimize --steps W` / `T` to recreate Phase 9 predictions.
@@ -233,13 +232,33 @@ optional SL/TP, 10 positions x 10% equity, one per symbol, Indian intraday charg
 - Note: each replay run creates new prediction ids, so replaying the same day twice into the API
   duplicates predictions; delete old REPLAY rows first (local data only).
 
+## Phase 19 results (DONE 2026-10-19) — docs/monitoring.md, reports/phase19_monitoring.{md,json}
+- ml monitor/{drift,runner,live}.py, CLI `monitor` (references + validation run, ~2 min). References
+  (monitor-ref-v2, data/monitoring/reference/): feature deciles from train (every 8th row); predictions,
+  accuracy, calibration from walk-forward folds before validation; regime mix (NIFTY trend x vol).
+- Thresholds are calibrated on historical windows of the same length (95% WARN / 99% DRIFT). Fixed PSI
+  cut-offs were dropped: persistent series (vix_level PSI ~5 every month) flagged every window.
+  INSUFFICIENT_DATA when a window or baseline is too small, never OK.
+- Validation run (monthly, both models): 1m MODEL_DRIFT_DETECTED in 2025-01 (MCC 0.163 < 0.177) and
+  2025-06 (ECE 0.094 > 0.090, 10-day month); 5m MODEL_DRIFT_DETECTED in 2025-01 (MCC 0.136 < 0.138).
+  Weekly (32): 1m 4 drift / 7 warn / 21 OK; 5m 3 / 7 / 22. Feature drift never fired (weighted PSI
+  0.08-0.17); drift shows up as accuracy loss, not as shifted inputs.
+- Live pipeline reports per completed session + last 5 sessions (`live --dates`). REPLAY 2025-01-27..29
+  into the API: 1m session MCC 0.138 / 0.096 / 0.189 (WARN, DRIFT, OK), 5m 0.120 / 0.096 / 0.178;
+  alerts raised and the 1m session alert cleared by the OK day. Inference p95 0.18-0.28 ms, feature
+  build p95 1.9 s per sampled minute.
+- API: MonitoringReport + SystemAlert tables, GET /monitoring, alerts (ML/Redis/feed down, latency,
+  drift; rolling last_N_sessions share one alert key), latency interceptor, checks every 60 s.
+  Web: /monitoring page. Drift never replaces a model.
+- Tests: ML 101, API 29 unit + 14 e2e, web 13 unit + 13 e2e.
+
 ## Architecture
 - `ml/src/pulsetrader/`: config, data/{schema,validate,io,discovery,pipeline},
   security/{lists,master}, features/{engine,preprocess}, labels/labels, splits/splits, eval/metrics,
   datasets/build, audit/leakage, eval/multiclass, models/classical,
   experiments/classical, datasets/sequences, models/deep, experiments/deep, serve/{app,models,store,parity},
   experiments/{optimize,calibrate,robustness,backtest,register}, eval/calibration, backtest/engine,
-  registry/registry,
+  registry/registry, monitor/{drift,runner,live},
   live/{events,providers,kite,candles,validate,cache,features,pipeline,parity},
   cli (fetch, discover, pipeline, security, dataset, audit, classical, deep, optimize, calibrate, robustness, backtest, registry, serve-check, export-app, live, live-parity, kite-login).
 - Docker baseline: docker-compose (postgres, redis, ml-service). ml/Dockerfile. CI: .github/workflows/ci.yml.
@@ -285,7 +304,8 @@ optional SL/TP, 10 positions x 10% equity, one per symbol, Indian intraday charg
 | 16 Frontend | DONE 2026-10-19: Next.js dashboard, 11 e2e flows on the real stack |
 | 17 Live market system | DONE 2026-10-19: Kite adapter + replay; live features/predictions match research exactly |
 | 18 Live paper evaluation | DONE 2026-10-19: REPLAY of 20 validation sessions; outcomes match labels exactly; gated calls 40-43% accurate, lose after costs |
-| 19–20 | NOT STARTED |
+| 19 Monitoring | DONE 2026-10-19: drift (feature, prediction, accuracy, calibration, regime) with calibrated thresholds, health, latency, alerts; Jan 2025 flagged as drift |
+| 20 | NOT STARTED |
 
 ## Known issues
 - No Kite Connect credentials yet and api.kite.trade / ws.kite.trade are blocked by this environment's
@@ -294,5 +314,5 @@ optional SL/TP, 10 positions x 10% equity, one per symbol, Indian intraday charg
 - Instrument classification of 8 tickers is uncertain (listed in reports/security_master.md).
 
 ## Commands
-See AGENTS.md. From ml/: `PULSETRADER_DATA_DIR=../data .venv/bin/pulsetrader {fetch,discover,pipeline,security,dataset,audit,classical,deep,optimize,calibrate,robustness,live,live-parity,live-eval}`.
-Tests: `.venv/bin/pytest` (97 passed on 2026-10-19). api/: `npm test`, `npm run test:e2e`. web/: `npm test`, `npm run test:e2e` (docs/frontend.md).
+See AGENTS.md. From ml/: `PULSETRADER_DATA_DIR=../data .venv/bin/pulsetrader {fetch,discover,pipeline,security,dataset,audit,classical,deep,optimize,calibrate,robustness,live,live-parity,live-eval,monitor}`.
+Tests: `.venv/bin/pytest` (101 passed on 2026-10-19). api/: `npm test`, `npm run test:e2e`. web/: `npm test`, `npm run test:e2e` (docs/frontend.md).

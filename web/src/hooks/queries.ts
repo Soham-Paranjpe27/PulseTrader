@@ -9,6 +9,7 @@ import type {
   LiveStatus,
   MinuteBar,
   ModelVersion,
+  MonitoringSummary,
   Page,
   Prediction,
   Ready,
@@ -95,4 +96,11 @@ export const useAccuracy = (symbol?: string, mode?: string, model?: string) =>
   useQuery({
     queryKey: ['accuracy', symbol ?? null, mode ?? null, model ?? null],
     queryFn: () => get<Accuracy>(`/predictions/accuracy${qs({ symbol, mode, model })}`),
+  });
+
+export const useMonitoring = () =>
+  useQuery({
+    queryKey: ['monitoring'],
+    queryFn: () => get<MonitoringSummary>('/monitoring'),
+    refetchInterval: 30_000,
   });

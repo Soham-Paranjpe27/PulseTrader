@@ -152,6 +152,24 @@ test('live performance: replayed predictions are scored and labelled REPLAY, not
   await expect(page.getByTestId('predictions-table')).not.toContainText(/\bLIVE\b/);
 });
 
+test('monitoring: health components, drift per model labelled REPLAY, alerts', async ({ page }) => {
+  // needs replayed sessions with drift reports in the database (`pulsetrader live --dates ...`)
+  await page.goto('/monitoring');
+  await expect(page.getByTestId('system-status')).toHaveText(/OK|WARNING|CRITICAL/);
+  const comps = page.getByTestId('components');
+  await expect(comps).toContainText('Database');
+  await expect(comps).toContainText('ML service');
+  await expect(page.getByTestId('api-latency')).toContainText('p95');
+  await expect(page.getByTestId('drift-overall')).toBeVisible();
+  const card = page.getByTestId('drift-card').first();
+  await expect(card).toContainText('REPLAY');
+  await expect(card).not.toContainText(/\bLIVE\b/);
+  await expect(card).toContainText('Accuracy (MCC)');
+  await expect(card).toContainText('Calibration (ECE)');
+  await expect(card.getByTestId('drift-status')).toHaveText(/OK|WARN|MODEL DRIFT DETECTED|INSUFFICIENT DATA/);
+  await expect(page.getByTestId('system-alerts').or(page.getByTestId('no-alerts'))).toBeVisible();
+});
+
 test('watchlist: create, add from the stock page, remove', async ({ page }) => {
   await login(page);
   await page.goto('/watchlist');

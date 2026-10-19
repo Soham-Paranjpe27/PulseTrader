@@ -294,3 +294,98 @@ export interface ResearchAnswer {
   answer: string;
   sources?: string[];
 }
+
+// --- Phase 19 monitoring ---
+export type DriftStatus = 'OK' | 'WARN' | 'MODEL_DRIFT_DETECTED' | 'INSUFFICIENT_DATA';
+export type Level = 'OK' | 'WARN' | 'DRIFT' | 'INSUFFICIENT_DATA';
+
+export interface DriftComponent {
+  status: Level;
+  thresholds?: [number, number];
+  [key: string]: unknown;
+}
+
+export interface DriftReport {
+  model: string;
+  mode: 'LIVE' | 'REPLAY';
+  status: DriftStatus;
+  reasons: string[];
+  window: { kind: string; start: string; end: string; days?: number; threshold_kind?: string };
+  components: {
+    feature?: DriftComponent & {
+      importance_weighted_psi?: number;
+      drifted?: number;
+      features?: number;
+      top?: { feature: string; psi: number; level: Level; thresholds: [number, number] }[];
+    };
+    prediction?: DriftComponent & { max_psi?: number; argmax_share?: Record<string, number> };
+    accuracy?: DriftComponent & {
+      window?: { mcc: number; accuracy: number; balanced_accuracy: number; n: number };
+      checks?: Record<
+        string,
+        { reference_mean: number; warn_below: number; drift_below: number; level: Level }
+      >;
+    };
+    calibration?: DriftComponent & { ece_top?: number; reference_mean?: number };
+    regime?: DriftComponent & { psi?: number; mix?: Record<string, number>; days?: number };
+  };
+  latency?: Record<string, number | null>;
+  action?: string;
+}
+
+export interface DriftLatest {
+  id: string;
+  model: string;
+  mode: 'LIVE' | 'REPLAY';
+  status: DriftStatus;
+  windowKind: string;
+  windowStart: string;
+  windowEnd: string;
+  createdAt: string;
+  report: DriftReport;
+}
+
+export interface SystemAlert {
+  id: string;
+  kind: string;
+  key: string;
+  severity: 'INFO' | 'WARNING' | 'CRITICAL';
+  message: string;
+  open: boolean;
+  count: number;
+  firstSeen: string;
+  lastSeen: string;
+  resolvedAt: string | null;
+  resolvedBy: string | null;
+}
+
+export interface LatencySummary {
+  windowSeconds: number;
+  requests: number;
+  errors5xx: number;
+  p50: number | null;
+  p95: number | null;
+  p99: number | null;
+  slowestRoutes: { route: string; requests: number; p95: number | null; errors5xx: number }[];
+}
+
+export interface MonitoringSummary {
+  status: 'OK' | 'WARNING' | 'CRITICAL';
+  components: {
+    checkedAt: string;
+    database: boolean;
+    redis: boolean;
+    mlService: {
+      reachable: boolean;
+      responseMs?: number;
+      error?: string;
+      metrics?: { request_latency_ms?: { p50: number | null; p95: number | null }; uptime_seconds?: number };
+    };
+    marketData: LiveStatus & { providerConfigured: string | null; marketOpen: boolean };
+    api: LatencySummary;
+    thresholds: { apiLatencyP95Ms: number; mlLatencyP95Ms: number };
+  };
+  drift: { status: DriftStatus | 'DATA_UNAVAILABLE'; latest: DriftLatest[] };
+  alerts: SystemAlert[];
+  note: string | null;
+}

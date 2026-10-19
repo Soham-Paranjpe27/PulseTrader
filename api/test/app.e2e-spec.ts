@@ -40,6 +40,7 @@ describe('PulseTrader API (e2e, real PostgreSQL)', () => {
     process.env.RATE_LIMIT_PER_MINUTE = '1000';
     process.env.AUTH_RATE_LIMIT_PER_MINUTE = '40';
     process.env.LIVE_STATUS_KEY = `e2e:live:status:${Date.now()}`;
+    process.env.MONITOR_INTERVAL_SECONDS = '0'; // checks run on request in tests
     delete process.env.LIVE_INGEST_TOKEN;
     prisma = new PrismaClient({ datasources: { db: { url: process.env.TEST_DATABASE_URL } } });
     await prisma.stock.createMany({
@@ -339,6 +340,96 @@ describe('PulseTrader API (e2e, real PostgreSQL)', () => {
       directionCorrect: true,
     });
     await prisma.prediction.deleteMany({ where: { id: { in: [pred.prediction_id, call.prediction_id] } } });
+  });
+
+  it('monitoring: drift reports raise and clear alerts; health summary; admin-only resolve', async () => {
+    const http = () => request(app.getHttpServer());
+    process.env.LIVE_INGEST_TOKEN = 'i'.repeat(40);
+    const tok = { 'x-ingest-token': 'i'.repeat(40) };
+    const empty = await http().get('/api/monitoring').expect(200);
+    expect(empty.body.components.database).toBe(true);
+    expect(empty.body.components.mlService.reachable).toBe(true);
+    expect(empty.body.drift.status).toBe('DATA_UNAVAILABLE');
+    expect(empty.body.components.marketData.state).toBe('REPLAY'); // set by the live ingestion test
+    expect(empty.body.components.marketData.marketOpen).toEqual(expect.any(Boolean));
+    const report = (status: string, reasons: string[]) => ({
+      model: 'lightgbm-y_5m_10bp-tuned@v1',
+      mode: 'REPLAY',
+      status,
+      reasons,
+      window: { kind: 'session', start: '2025-01-20', end: '2025-01-20' },
+      components: { accuracy: { status: reasons.length ? 'DRIFT' : 'OK' } },
+      latency: { inference_ms_p50: 0.4 },
+    });
+    await http()
+      .post('/api/live/monitoring')
+      .send({ reports: [report('OK', [])] })
+      .expect(403);
+    await http()
+      .post('/api/live/monitoring')
+      .set(tok)
+      .send({ reports: [{ ...report('OK', []), status: 'FINE' }] })
+      .expect(400);
+    const drift = report('MODEL_DRIFT_DETECTED', ['accuracy DRIFT']);
+    await http()
+      .post('/api/live/monitoring')
+      .set(tok)
+      .send({ reports: [drift] })
+      .expect(200, { stored: 1 });
+    await http()
+      .post('/api/live/monitoring')
+      .set(tok)
+      .send({ reports: [drift] })
+      .expect(200);
+    const s = await http().get('/api/monitoring').expect(200);
+    expect(s.body.status).toBe('CRITICAL');
+    expect(s.body.drift.status).toBe('MODEL_DRIFT_DETECTED');
+    const alert = s.body.alerts.find((a: { kind: string }) => a.kind === 'MODEL_DRIFT_DETECTED');
+    expect(alert).toMatchObject({ severity: 'CRITICAL', count: 2, open: true });
+    expect(alert.message).toMatch(/not replaced automatically/);
+    await http().get('/api/monitoring/alerts').expect(401); // login required
+    const u = await login('mon@x.co');
+    expect((await u.agent.get('/api/monitoring/alerts?open=true').expect(200)).body).toHaveLength(1);
+    expect((await u.agent.get('/api/monitoring/reports').expect(200)).body).toHaveLength(2);
+    await u.agent.post(`/api/monitoring/alerts/${alert.id}/resolve`).set('x-csrf-token', u.csrf).expect(403);
+    // a healthy report for the same model, mode and window length clears the alert automatically
+    await http()
+      .post('/api/live/monitoring')
+      .set(tok)
+      .send({ reports: [report('OK', [])] })
+      .expect(200);
+    const after = await http().get('/api/monitoring').expect(200);
+    expect(after.body.alerts.filter((a: { kind: string }) => a.kind === 'MODEL_DRIFT_DETECTED')).toHaveLength(
+      0,
+    );
+    expect(after.body.drift.status).toBe('OK');
+    const closed = await prisma.systemAlert.findUniqueOrThrow({ where: { id: alert.id } });
+    expect(closed).toMatchObject({ open: false, resolvedBy: 'auto' });
+    // admins can resolve by hand
+    await http()
+      .post('/api/live/monitoring')
+      .set(tok)
+      .send({ reports: [drift] })
+      .expect(200);
+    const again = await prisma.systemAlert.findFirstOrThrow({
+      where: { kind: 'MODEL_DRIFT_DETECTED', open: true },
+    });
+    await prisma.user.update({ where: { email: 'mon@x.co' }, data: { role: 'ADMIN' } });
+    const adminRes = await u.agent
+      .post('/api/auth/login')
+      .send({ email: 'mon@x.co', password: 'correct horse 123' })
+      .expect(200);
+    const r = await u.agent
+      .post(`/api/monitoring/alerts/${again.id}/resolve`)
+      .set('x-csrf-token', csrfOf(adminRes))
+      .expect(200);
+    expect(r.body.open).toBe(false);
+    // request latency is recorded per route pattern
+    const lat = (await http().get('/api/monitoring').expect(200)).body.components.api;
+    expect(lat.requests).toBeGreaterThan(0);
+    expect(lat.slowestRoutes.map((x: { route: string }) => x.route)).toContain('POST /api/live/monitoring');
+    await prisma.monitoringReport.deleteMany({});
+    await prisma.systemAlert.deleteMany({});
   });
 
   it('watchlists are private to their owner', async () => {

@@ -33,6 +33,7 @@ from pulsetrader.live.features import LiveUniverse, check_features, feature_rows
 from pulsetrader.live.outcomes import OutcomeTracker
 from pulsetrader.live.providers import LiveProvider, MarketDataProvider
 from pulsetrader.live.validate import BarValidator, FeedMonitor, ValidationConfig
+from pulsetrader.monitor.live import LiveDriftMonitor
 from pulsetrader.serve.models import LoadedModel
 
 log = logging.getLogger(__name__)
@@ -42,6 +43,7 @@ class Sink(Protocol):
     def predictions(self, preds: list[dict[str, Any]]) -> None: ...
     def outcomes(self, outs: list[dict[str, Any]]) -> None: ...
     def status(self, snapshot: dict[str, Any]) -> None: ...
+    def monitoring(self, reports: list[dict[str, Any]]) -> None: ...
 
 
 @dataclass
@@ -49,9 +51,13 @@ class MemorySink:
     preds: list[dict[str, Any]] = field(default_factory=list)
     statuses: list[dict[str, Any]] = field(default_factory=list)
     outs: list[dict[str, Any]] = field(default_factory=list)
+    reports: list[dict[str, Any]] = field(default_factory=list)
 
     def predictions(self, preds: list[dict[str, Any]]) -> None:
         self.preds.extend(preds)
+
+    def monitoring(self, reports: list[dict[str, Any]]) -> None:
+        self.reports.extend(reports)
 
     def outcomes(self, outs: list[dict[str, Any]]) -> None:
         self.outs.extend(outs)
@@ -62,7 +68,8 @@ class MemorySink:
 
 @dataclass
 class JsonlSink:
-    """Predictions to `path`, outcomes to `path` with an `.outcomes.jsonl` suffix."""
+    """Predictions to `path`, outcomes and drift reports next to it (`.outcomes.jsonl`,
+    `.monitoring.jsonl`)."""
 
     path: Path
 
@@ -71,6 +78,8 @@ class JsonlSink:
         self.path.write_text("")
         self.outcomes_path = self.path.with_suffix(".outcomes.jsonl")
         self.outcomes_path.write_text("")
+        self.monitoring_path = self.path.with_suffix(".monitoring.jsonl")
+        self.monitoring_path.write_text("")
 
     @staticmethod
     def _append(path: Path, rows: list[dict[str, Any]]) -> None:
@@ -83,6 +92,9 @@ class JsonlSink:
 
     def outcomes(self, outs: list[dict[str, Any]]) -> None:
         self._append(self.outcomes_path, outs)
+
+    def monitoring(self, reports: list[dict[str, Any]]) -> None:
+        self._append(self.monitoring_path, reports)
 
     def status(self, snapshot: dict[str, Any]) -> None:
         return None
@@ -127,6 +139,10 @@ class ApiSink:
     def status(self, snapshot: dict[str, Any]) -> None:
         self._post("/live/status", snapshot)
 
+    def monitoring(self, reports: list[dict[str, Any]]) -> None:
+        for r in reports:  # one report per request keeps each body small
+            self._post("/live/monitoring", {"reports": [r]})
+
 
 @dataclass
 class PipelineConfig:
@@ -146,6 +162,7 @@ class LivePipeline:
     cfg: PipelineConfig = field(default_factory=PipelineConfig)
     current: datetime | None = None
     feature_frames: list[pl.DataFrame] = field(default_factory=list)
+    drift: LiveDriftMonitor | None = None  # Phase 19: drift reports after each completed session
     stats: dict[str, Any] = field(
         default_factory=lambda: {
             "minutes": 0, "sampled": 0, "predictions": 0, "late_bars": 0, "feature_seconds": []
@@ -202,8 +219,22 @@ class LivePipeline:
             self.finalize(self.current)
             self.current = None
 
+    def check_drift(self, current: datetime | None) -> list[dict[str, Any]]:
+        """Drift reports for sessions completed before `current` (None: every session with data)."""
+        if self.drift is None:
+            return []
+        reps: list[dict[str, Any]] = []
+        for d in self.drift.pending_sessions(current.date() if current else None):
+            reps += self.drift.reports_for(d, self.mode)
+        if reps:
+            self.stats["drift_reports"] = self.stats.get("drift_reports", 0) + len(reps)
+            for s in self.sinks:
+                s.monitoring(reps)
+        return reps
+
     def finalize(self, ts: datetime) -> None:
         now = self._avail or ts + BAR
+        self.check_drift(ts)  # a new session started: report on the completed one
         self._done = ts
         self.stats["minutes"] += 1
         state = self._state(now)
@@ -221,6 +252,8 @@ class LivePipeline:
         if not self.cfg.track_outcomes:
             return []
         outs = self.tracker.resolve(self.cache, self._done, final)
+        if outs and self.drift is not None:
+            self.drift.observe_outcomes(outs)
         if outs:
             self.stats["outcomes"] = self.stats.get("outcomes", 0) + len(outs)
             for s in self.sinks:
@@ -230,7 +263,8 @@ class LivePipeline:
     def predict(self, ts: datetime, now: datetime, state: FeedState) -> list[dict[str, Any]]:
         t0 = time.perf_counter()
         rows, names = feature_rows(self.cache, self.universe, ts)
-        self.stats["feature_seconds"].append(time.perf_counter() - t0)
+        fsec = time.perf_counter() - t0
+        self.stats["feature_seconds"].append(fsec)
         self.stats["sampled"] += 1
         if self.cfg.keep_features:
             self.feature_frames.append(rows)
@@ -255,6 +289,8 @@ class LivePipeline:
         self.stats["predictions"] += len(out)
         for s in self.sinks:
             s.predictions(out)
+        if self.drift is not None:
+            self.drift.observe(rows, out, fsec)
         if self.cfg.track_outcomes:
             self.tracker.add(out)
         return out
@@ -281,6 +317,7 @@ class LivePipeline:
             self.finalize(self.current)
             self.current = None
         self.resolve_outcomes(final=True)  # stream ended: no later bar can arrive
+        self.check_drift(None)
         self.publish_status(self._last_now or datetime.now().astimezone())
         fsec = self.stats["feature_seconds"]
         return {

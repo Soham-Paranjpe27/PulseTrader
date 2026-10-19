@@ -35,5 +35,6 @@ data/*.log
 data/*.pid
 data/app/
 data/live/
+data/monitoring/
 reports/*.jsonl
 dump.rdb

@@ -300,3 +300,44 @@ model AuditLog {
   @@index([userId, createdAt])
   @@index([action, createdAt])
 }
+
+enum AlertSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+/// Drift and latency report from the live pipeline after each completed session (Phase 19).
+model MonitoringReport {
+  id          String   @id @default(uuid())
+  modelKey    String // model_id@vN
+  mode        String // LIVE | REPLAY
+  status      String // OK | WARN | MODEL_DRIFT_DETECTED | INSUFFICIENT_DATA
+  windowKind  String // session | last_N_sessions
+  windowStart DateTime
+  windowEnd   DateTime
+  report      Json
+  createdAt   DateTime @default(now())
+
+  @@index([modelKey, createdAt])
+}
+
+/// System alerts raised by monitoring (model drift, feed, ML service, latency). One open alert per
+/// (kind, key); repeats update lastSeen and count; a healthy check resolves it.
+model SystemAlert {
+  id         String        @id @default(uuid())
+  kind       String // MODEL_DRIFT_DETECTED | FEED_DOWN | ML_SERVICE_DOWN | REDIS_DOWN | LATENCY_HIGH
+  key        String // what it is about, e.g. a model key or 'ml-service'
+  severity   AlertSeverity
+  message    String
+  details    Json?
+  open       Boolean       @default(true)
+  count      Int           @default(1)
+  firstSeen  DateTime      @default(now())
+  lastSeen   DateTime      @default(now())
+  resolvedAt DateTime?
+  resolvedBy String? // 'auto' or a user id
+
+  @@index([open, lastSeen])
+  @@index([kind, key, open])
+}

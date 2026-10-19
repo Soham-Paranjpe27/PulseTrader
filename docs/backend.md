@@ -28,6 +28,7 @@ npm test && npm run test:e2e                   # e2e needs TEST_DATABASE_URL (ow
 | portfolio | GET/POST /portfolios; GET/DELETE /portfolios/:id; POST /portfolios/:id/trades (paper, long-only) |
 | research | POST /research/ask |
 | health | GET /health (liveness), GET /health/ready (db, redis, ML service, feed state) |
+| monitoring | GET /monitoring (public summary: components, latest drift per model, open alerts); GET /monitoring/alerts, /monitoring/reports (login); POST /monitoring/alerts/:id/resolve, /monitoring/check (ADMIN); POST /live/monitoring (ingest token). See docs/monitoring.md |
 | admin | POST /admin/sync/registry, /admin/alerts/evaluate; GET /admin/audit (ADMIN) |
 
 ## Behaviour that matters

@@ -239,8 +239,6 @@ def cmd_live(args: argparse.Namespace) -> None:
     from pulsetrader.serve.models import ModelServer
 
     p = data_paths()
-    day = date.fromisoformat(args.date) if args.date else None
-    provider = provider_from_env(p.root, day, speed=args.speed)
     srv = ModelServer(p.root / "registry")
     models = [m for m in srv.models.values() if not args.model or m.record.model_id in args.model]
     if not models:
@@ -252,8 +250,16 @@ def cmd_live(args: argparse.Namespace) -> None:
     elif api:
         log.warning("LIVE_API_URL set without LIVE_INGEST_TOKEN; not sending to the API")
     uni = LiveUniverse.from_manifest(p.datasets / args.name)
-    res = asyncio.run(LivePipeline(provider, uni, models, sinks).run())
-    print(json.dumps(res, indent=1, default=str))
+    from pulsetrader.monitor.runner import live_monitor
+
+    # one drift monitor across sessions, so a multi-day replay also gets the last-N-sessions report
+    drift = live_monitor(p.root, [m.record.key for m in models], args.name)
+    days = [date.fromisoformat(d) for d in args.dates] if args.dates else [
+        date.fromisoformat(args.date) if args.date else None]  # fmt: skip
+    for day in days:
+        provider = provider_from_env(p.root, day, speed=args.speed)
+        res = asyncio.run(LivePipeline(provider, uni, models, sinks, drift=drift).run())
+        print(json.dumps(res, indent=1, default=str))
 
 
 def cmd_live_parity(args: argparse.Namespace) -> None:
@@ -291,6 +297,25 @@ def cmd_live_eval(args: argparse.Namespace) -> None:
     (reports / "phase18_live_eval.json").write_text(json.dumps(res, indent=1, default=str))
     for e in res["evaluation"]:
         print(e["model"], e["selective"], e["full_coverage"]["mcc"] if e["full_coverage"] else None)
+
+
+def cmd_monitor(args: argparse.Namespace) -> None:
+    """Phase 19: build drift references per model and run the monitor over the validation period."""
+    from pulsetrader.monitor.runner import build_references, evaluate_validation, render
+
+    p = data_paths()
+    refs = build_references(p.root, args.name)
+    res = evaluate_validation(p.root, args.name)
+    reports = Path(args.reports)
+    reports.mkdir(parents=True, exist_ok=True)
+    (reports / "phase19_monitoring.md").write_text(render(refs, res))
+    (reports / "phase19_monitoring.json").write_text(
+        json.dumps({"references": refs, **res}, indent=1, default=str)
+    )
+    for mres in res["models"]:
+        for w in mres["windows"]:
+            if w["window"]["kind"] == "month":
+                print(mres["model"], w["window"]["label"], w["status"], w["reasons"])
 
 
 def cmd_kite_login(args: argparse.Namespace) -> None:
@@ -379,6 +404,7 @@ def main() -> None:
     au.set_defaults(func=cmd_audit)
     lv = sub.add_parser("live", help="Phase 17: live pipeline (MARKET_DATA_PROVIDER=kite, or replay --date)")
     lv.add_argument("--date", help="replay session YYYY-MM-DD (replay provider only)")
+    lv.add_argument("--dates", nargs="*", help="replay several sessions in order (one drift monitor)")
     lv.add_argument("--speed", type=float, default=0.0, help="replay speed x real time (0 = max)")
     lv.add_argument("--model", nargs="*", help="model ids (default: every servable model)")
     lv.add_argument("--name", default="core100_s5")
@@ -398,6 +424,10 @@ def main() -> None:
     le.add_argument("--out", default="../data/live/phase18_replay.jsonl")
     le.add_argument("--reports", default="../reports")
     le.set_defaults(func=cmd_live_eval)
+    mo = sub.add_parser("monitor", help="Phase 19: drift references + drift over the validation period")
+    mo.add_argument("--name", default="core100_s5")
+    mo.add_argument("--reports", default="../reports")
+    mo.set_defaults(func=cmd_monitor)
     kl = sub.add_parser("kite-login", help="Zerodha Kite Connect login URL / request-token exchange")
     kl.add_argument("--request-token")
     kl.set_defaults(func=cmd_kite_login)

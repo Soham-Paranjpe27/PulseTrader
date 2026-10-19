@@ -15,6 +15,7 @@ import { LiveModule } from './live/live.module';
 import { MarketDataModule } from './market-data/market-data.module';
 import { MlModule } from './ml/ml.client';
 import { ModelsModule } from './models/models.module';
+import { MonitoringModule } from './monitoring/monitoring.module';
 import { PortfolioModule } from './portfolio/portfolio.module';
 import { PredictionsModule } from './predictions/predictions.module';
 import { PrismaModule } from './prisma/prisma.module';
@@ -47,6 +48,7 @@ import { WatchlistModule } from './watchlist/watchlist.module';
     UsersModule,
     StocksModule,
     LiveModule,
+    MonitoringModule,
     MarketDataModule,
     PredictionsModule,
     FeaturesModule,

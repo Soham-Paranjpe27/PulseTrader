@@ -111,6 +111,10 @@ export class MlClient {
     return this.request('/features');
   }
 
+  metrics(): Promise<Record<string, unknown>> {
+    return this.request('/metrics', {}, 3_000);
+  }
+
   ready(): Promise<Record<string, unknown>> {
     return this.request('/ready', {}, 3_000);
   }

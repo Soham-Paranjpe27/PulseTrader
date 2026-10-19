@@ -106,6 +106,7 @@ export async function startMlStub(): Promise<MlStub> {
         });
       }
       if (path === '/ready') return send(200, { ready: true, reason: 'NO_PRODUCTION_MODEL' });
+      if (path === '/metrics') return send(200, { request_latency_ms: { p50: 2, p95: 5, p99: 9 } });
       if (path.startsWith('/bars/'))
         return send(200, { symbol: 'RELIANCE', date: '2025-01-06', bars: [{ ts: 'x', close: 1 }] });
       if (path.startsWith('/indicators/')) {
