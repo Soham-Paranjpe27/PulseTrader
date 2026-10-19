@@ -247,6 +247,17 @@ def models() -> dict[str, Any]:
                 "validation": {k: v.get(k) for k in ("accuracy", "balanced_accuracy", "mcc", "coverage")},
                 "backtest_gated_after_costs": {k: bt.get(k) for k in BT_KEYS},
                 "gates": {g: x["status"] for g, x in r.gates.items()},
+                "model_type": r.model_type,
+                "dataset_version": r.dataset_version,
+                "feature_version": r.feature_version,
+                "label_version": r.label_version,
+                "training_period": r.training_period,
+                "validation_period": r.validation_period,
+                "test_period": r.test_period,
+                "hyperparameters": r.hyperparameters,
+                "calibration_version": r.calibration_version,
+                "artifact_path": r.artifact_path,
+                "history": r.history,
                 **({"serving": srv.models[r.key].summary()} if r.key in srv.models else {}),
             }
         )  # fmt: skip
@@ -291,6 +302,35 @@ def features(model_id: str | None = None) -> dict[str, Any]:
             for m in ms
         ]
     }
+
+
+@app.get("/bars/{symbol}")
+def bars(symbol: str, date: str) -> dict[str, Any]:
+    """Minute bars of one regular session from the canonical store (prices for charts; no labels)."""
+    import re
+    from datetime import date as date_cls
+
+    import polars as pl
+
+    from pulsetrader.data.io import safe_name
+
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", date):
+        raise _fail(422, "BAD_REQUEST", "date must be YYYY-MM-DD")
+    f = _data_root() / "canonical" / f"{safe_name(symbol)}.parquet"
+    if not f.exists():
+        raise _fail(404, "DATA_UNAVAILABLE", f"no canonical bars for {symbol}")
+    d = date_cls.fromisoformat(date)
+    df = (
+        pl.scan_parquet(f)
+        .filter(pl.col("trade_date") == d)
+        .select("ts", "open", "high", "low", "close", "volume")
+        .sort("ts")
+        .collect()
+    )
+    if df.height == 0:
+        raise _fail(404, "DATA_UNAVAILABLE", f"no bars for {symbol} on {date}")
+    rows = [{**r, "ts": r["ts"].isoformat()} for r in df.iter_rows(named=True)]
+    return {"symbol": symbol, "date": date, "count": len(rows), "bars": rows, "source": "canonical-v1"}
 
 
 @app.get("/metrics")

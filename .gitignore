@@ -33,3 +33,4 @@ dist/
 coverage/
 data/*.log
 data/*.pid
+data/app/

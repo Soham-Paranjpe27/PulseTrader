@@ -164,3 +164,13 @@ def test_production_model_answers_unnamed_requests(served, monkeypatch):
     p = c.post("/predict", json={"symbol": sym, "timestamp": ts.isoformat()}).json()
     assert p["model_status"] == "PRODUCTION" and p["research_only"] is False
     service.reset()
+
+
+def test_bars_endpoint(client, served):
+    sym, ts = served["preds"].row(0)[:2]
+    d = ts.date().isoformat()
+    r = client.get(f"/bars/{sym}?date={d}")
+    assert r.status_code == 200 and r.json()["count"] > 0
+    assert set(r.json()["bars"][0]) == {"ts", "open", "high", "low", "close", "volume"}
+    assert client.get(f"/bars/{sym}?date=bad").status_code == 422
+    assert client.get("/bars/NOPE?date=2024-01-02").json()["detail"]["code"] == "DATA_UNAVAILABLE"

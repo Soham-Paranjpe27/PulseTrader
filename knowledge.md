@@ -1,16 +1,17 @@
 # knowledge.md — PulseTrader V4 project state
 
-Last updated: 2026-10-19 (phase 14 done).
+Last updated: 2026-10-19 (phase 15 done).
 
 ## Current phase
-Phases 0–14 DONE on real data (Phase 14 finished 2026-10-19). Next: Phase 15 (NestJS backend).
+Phases 0–15 DONE on real data (Phase 15 finished 2026-10-19). Next: Phase 16 (Next.js frontend).
 
 ## Next exact action
-1. Phase 15 (backend): NestJS + TypeScript + Prisma/PostgreSQL + JWT httpOnly cookies + Redis +
-   WebSocket/SSE + Swagger, modules auth, users, stocks, market-data, predictions, models, features,
-   watchlist, alerts, portfolio, research, health, admin; entities per spec section 53. Proxies the ML
-   service (docs/ml-service.md) for predictions/models/features. Check node/npm and postgres availability
-   first; integration tests need a database (docker daemon is NOT available in this container).
+1. Phase 16 (frontend): Next.js App Router + TypeScript + Tailwind + shadcn/ui + TanStack Query +
+   Zustand + React Hook Form + Zod + lightweight-charts in web/. Pages: /, login, register, dashboard,
+   stocks, stocks/[symbol] (spec section 57 fields), predictions, watchlist, portfolio, alerts, research,
+   settings. Talks to the API (docs/backend.md) with cookies + x-csrf-token. Show research_only /
+   NO_PRODUCTION_MODEL / DISCONNECTED honestly. E2E (Playwright, Chromium at /opt/pw-browsers).
+   Local stack: `service postgresql start; redis-server --daemonize yes`; ML service on :8000, API on :3001.
 2. If the container was recycled, data/ is gone: torch needs `pip install torch --index-url
    https://download.pytorch.org/whl/cpu`, then `pulsetrader fetch`, `pipeline`, `security`, `dataset`
    (~35 min), then `pulsetrader optimize --steps W` / `T` to recreate Phase 9 predictions.
@@ -148,6 +149,21 @@ optional SL/TP, 10 positions x 10% equity, one per symbol, Indian intraday charg
 - Docker: Dockerfile adds libgomp1 (LightGBM); compose mounts data/registry + data/datasets read-only.
   No docker daemon here; CI runs `docker build ml`.
 
+## Phase 15 results (DONE 2026-10-19) — docs/backend.md, docs/security.md
+- api/: NestJS 11.2, Prisma 6.19 (pinned known majors, not Nest 12 / Prisma 7+), TypeScript 5.9.
+  Modules auth, users, stocks, market-data, predictions (+SSE), models, features, watchlist, alerts,
+  portfolio (paper), research (intent parser, DATA_UNAVAILABLE), health, admin. 16 Prisma entities.
+- Seeded from `pulsetrader export-app` (data/app, gitignored): 2,535 instruments, 2,073,963 daily bars
+  (~3 min). Local dev DB: postgres 16 `pulsetrader` / `pulsetrader_test`, creds in api/.env (gitignored).
+- Tests: 21 unit (jest) + 12 e2e on real PostgreSQL with a test-only ML HTTP stub. e2e uses a fresh
+  schema per run (`migrate deploy`) and drops only that schema; `prisma migrate reset` is blocked
+  for agents and must not be used without the user's consent.
+- Smoke test with the real ML service: register/login, prediction stored (CANDIDATE, research only,
+  LOW_CONFIDENCE abstain), research answer from stored data, models/active NO_PRODUCTION_MODEL.
+- ML service gained GET /bars/{symbol}?date and richer /models rows. CI: new api job (postgres+redis
+  services) and docker build api. npm audit --omit=dev: 0 (overrides js-yaml ^5.4.1, deepmerge-ts ^8);
+  dev-only `braces` advisory remains.
+
 ## Architecture
 - `ml/src/pulsetrader/`: config, data/{schema,validate,io,discovery,pipeline},
   security/{lists,master}, features/{engine,preprocess}, labels/labels, splits/splits, eval/metrics,
@@ -155,9 +171,9 @@ optional SL/TP, 10 positions x 10% equity, one per symbol, Indian intraday charg
   experiments/classical, datasets/sequences, models/deep, experiments/deep, serve/{app,models,store,parity},
   experiments/{optimize,calibrate,robustness,backtest,register}, eval/calibration, backtest/engine,
   registry/registry,
-  cli (fetch, discover, pipeline, security, dataset, audit, classical, deep, optimize, calibrate, robustness, backtest, registry, serve-check).
+  cli (fetch, discover, pipeline, security, dataset, audit, classical, deep, optimize, calibrate, robustness, backtest, registry, serve-check, export-app).
 - Docker baseline: docker-compose (postgres, redis, ml-service). ml/Dockerfile. CI: .github/workflows/ci.yml.
-- Backend (NestJS) and frontend (Next.js): not started.
+- Backend: api/ (NestJS, Phase 15). Frontend (Next.js): not started.
 
 ## Versions
 - schema `canonical-v1`, processing `pipeline-v2`, security master `secmaster-v1`,

@@ -220,6 +220,13 @@ def cmd_serve_check(args: argparse.Namespace) -> None:
         print(m["model"], "parity", m["parity_passed"], m["historical_max_abs_diff"], m["abstain_reasons"])
 
 
+def cmd_export_app(args: argparse.Namespace) -> None:
+    from pulsetrader.appdata import export
+
+    p = data_paths()
+    print(export(p.root, p.root / "app"))
+
+
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     ap = argparse.ArgumentParser(prog="pulsetrader")
@@ -280,6 +287,8 @@ def main() -> None:
     sc = sub.add_parser("serve-check", help="Phase 14: end-to-end inference parity on validation rows")
     sc.add_argument("--reports", default="../reports")
     sc.set_defaults(func=cmd_serve_check)
+    ea = sub.add_parser("export-app", help="Phase 15: stocks + daily bars for the application database")
+    ea.set_defaults(func=cmd_export_app)
     au = sub.add_parser("audit", help="Phase 6: leakage gate on real data for a built dataset")
     au.add_argument("--name", default="core100_s5")
     au.add_argument("--reports", default="../reports")

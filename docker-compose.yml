@@ -25,5 +25,19 @@ services:
       - ./data/registry:/data/registry:ro
       - ./data/datasets:/data/datasets:ro
     ports: ["8000:8000"]
+  api:
+    build: ./api
+    environment:
+      DATABASE_URL: postgresql://pulsetrader:${POSTGRES_PASSWORD}@postgres:5432/pulsetrader
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      REDIS_URL: redis://redis:6379
+      ML_SERVICE_URL: http://ml-service:8000
+      WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:3000}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      ml-service: { condition: service_started }
+    ports: ["3001:3001"]
 volumes:
   pgdata:
