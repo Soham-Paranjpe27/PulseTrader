@@ -3,13 +3,15 @@
 Last updated: 2026-10-17 18:45 UTC (phase 8 paused).
 
 ## Current phase
-Phases 0–10 DONE on real data (Phase 10 finished 2026-10-19). Next: Phase 11 (robustness).
+Phases 0–11 DONE on real data (Phase 11 finished 2026-10-19). Next: Phase 12 (backtesting).
 
 ## Next exact action
-1. Phase 11 (robustness): evaluate the tuned LightGBM y_1m_5bp / y_5m_10bp walk-forward predictions by
-   regime (NIFTY trend/volatility), sector (not available offline: use symbol groups), symbol, volatility
-   bucket, time of day, and cost sensitivity (sign accuracy vs round-trip cost). Inputs: Phase 9/10
-   predictions.parquet in data/experiments. Validation + pre-validation folds only; test unused.
+1. Phase 12 (backtesting): event-driven portfolio backtester (entry/exit, capital, position size, costs,
+   slippage, brokerage/STT config, holding period, stop/take-profit, turnover, exposure, concurrent
+   positions), metrics (total return, CAGR, Sharpe, Sortino, Calmar, max DD, win rate, profit factor,
+   avg/median trade), vs buy-and-hold, naive and momentum. Run on validation predictions of tuned
+   LightGBM y_1m_5bp / y_5m_10bp (data/experiments/*-p9-wf-expanding-lightgbm-*-tuned-*). Test unused.
+   Expect negative net results: Phase 11 break-even is < 2 bp per call.
 2. If the container was recycled, data/ is gone: torch needs `pip install torch --index-url
    https://download.pytorch.org/whl/cpu`, then `pulsetrader fetch`, `pipeline`, `security`, `dataset`
    (~35 min), then `pulsetrader optimize --steps W` / `T` to recreate Phase 9 predictions.
@@ -109,6 +111,14 @@ Calibrators fit on Phase 9 OOF folds F1-F4 (method chosen by Brier on F4 after f
   behaviour (MCC 0.194 -> 0.165), so decisions use raw tuned output / class bias, reported probability = calibrated.
 - High-confidence (top prob >= 0.7) rows are ~all NEUTRAL (acc 81-90%); directional P>=0.5 covers 0.3%, sign acc 57%.
 
+## Phase 11 results (robustness-v1, DONE 2026-10-19) — reports/phase11_robustness.md
+Tuned LightGBM walk-forward OOF predictions; buckets from training-period info only; sectors inferred
+(max residual daily-return correlation with NIFTY sector indices, no offline sector master).
+- Skill is mostly move-vs-no-move (binary MCC 0.27 on 1m) not direction (55.8% right on moved+called rows).
+- All 100 stocks MCC > 0 and beat momentum; trend/vol/sector buckets MCC 0.16-0.21 (1m). Weak at 09:15-09:45 (0.04).
+- Fold MCC declines 0.241 (2023) -> 0.194 (validation): edge shrinking over time.
+- Per-call gross 0.5-1.9 bp; break-even < 2 bp round trip, so negative after realistic NSE costs.
+
 ## Architecture
 - `ml/src/pulsetrader/`: config, data/{schema,validate,io,discovery,pipeline},
   security/{lists,master}, features/{engine,preprocess}, labels/labels, splits/splits, eval/metrics,
@@ -149,7 +159,8 @@ Calibrators fit on Phase 9 OOF folds F1-F4 (method chosen by Brier on F4 after f
 | 8 Deep learning | DONE 2026-10-18: transformer L120 ties GBM (best MCC 0.167 on y_1m_5bp); reports/phase8_deep.md |
 | 9 Optimisation | DONE 2026-10-18: walk-forward, Optuna, feature selection, ensembles; best val MCC 0.194 (tuned LightGBM y_1m_5bp); reports/phase9_optimization.md |
 | 10 Calibration | DONE 2026-10-19: Platt + isotonic; tuned models need calibration (classwise ECE 0.14 -> 0.02); reports/phase10_calibration.md |
-| 11–20 | NOT STARTED |
+| 11 Robustness | DONE 2026-10-19: edge broad across stocks/regimes/sectors, weak at the open, shrinking over time, break-even < 2 bp; reports/phase11_robustness.md |
+| 12–20 | NOT STARTED |
 
 ## Known issues
 - No market-data provider credentials; live phases will use the provider interface, MockProvider in tests only.
@@ -157,5 +168,5 @@ Calibrators fit on Phase 9 OOF folds F1-F4 (method chosen by Brier on F4 after f
 - Instrument classification of 8 tickers is uncertain (listed in reports/security_master.md).
 
 ## Commands
-See AGENTS.md. From ml/: `PULSETRADER_DATA_DIR=../data .venv/bin/pulsetrader {fetch,discover,pipeline,security,dataset,audit,classical,deep,optimize,calibrate}`.
-Tests: `.venv/bin/pytest` (57 passed on 2026-10-19).
+See AGENTS.md. From ml/: `PULSETRADER_DATA_DIR=../data .venv/bin/pulsetrader {fetch,discover,pipeline,security,dataset,audit,classical,deep,optimize,calibrate,robustness}`.
+Tests: `.venv/bin/pytest` (59 passed on 2026-10-19).
