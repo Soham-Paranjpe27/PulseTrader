@@ -1,6 +1,6 @@
 {
  "registry_version": "registry-v1",
- "updated_at": "2026-10-19T07:32:32.240982+00:00",
+ "updated_at": "2026-10-20T11:34:25.701224+00:00",
  "models": [
   {
    "model_id": "lightgbm-y_1m_5bp-tuned",
@@ -28,7 +28,9 @@
     "name": "test",
     "start": "2025-06-16",
     "end": "2026-01-21",
-    "used": false
+    "used": true,
+    "used_at": "2026-10-20T11:34:25.696982+00:00",
+    "report": "reports/final_test.json"
    },
    "hyperparameters": {
     "objective": "multiclass",
@@ -190,7 +192,80 @@
       "n_predictions": 0,
       "coverage": 0.0
      }
-    ]
+    ],
+    "test": {
+     "full_coverage_raw": {
+      "n": 1123575,
+      "coverage": 1.0,
+      "accuracy": 0.6239441069799524,
+      "balanced_accuracy": 0.44049749758473783,
+      "macro_f1": 0.44160228430502785,
+      "mcc": 0.19950398474081718,
+      "roc_auc_ovr": 0.681916434122788,
+      "brier": 0.5151604792556155,
+      "log_loss": 0.8850990976062056,
+      "ece_top": 0.10701478533980352,
+      "updown_auc": 0.6008699894293461,
+      "confusion_matrix": [
+       [
+        49508,
+        92911,
+        33940
+       ],
+       [
+        89115,
+        607322,
+        79321
+       ],
+       [
+        39959,
+        87281,
+        44218
+       ]
+      ],
+      "class_distribution": {
+       "DOWN": 0.15696237456333578,
+       "NEUTRAL": 0.6904372204792737,
+       "UP": 0.15260040495739047
+      },
+      "pred_distribution": {
+       "DOWN": 0.15894088067107226,
+       "NEUTRAL": 0.7009002514295886,
+       "UP": 0.14015886789933915
+      },
+      "verdict": "NOT VERIFIED"
+     },
+     "full_coverage_calibrated": {
+      "accuracy": 0.6941112075295374,
+      "balanced_accuracy": 0.3704632885578207,
+      "mcc": 0.15030494577269551,
+      "brier": 0.44126677359757727,
+      "ece_classwise": 0.0287334315076114,
+      "ece_classwise_raw": 0.1479727417099339
+     },
+     "baselines": {
+      "majority_class_from_train": "NEUTRAL",
+      "majority_accuracy": 0.6904372204792737,
+      "momentum_mcc": 0.10015789283187067,
+      "momentum_accuracy": 0.5671236900073426,
+      "momentum_balanced_accuracy": 0.37401927806369967
+     },
+     "service_calls": {
+      "calls": 349,
+      "coverage": 0.00031061566873595445,
+      "abstained": {
+       "LOW_CONFIDENCE": 1122616,
+       "MODEL_OUT_OF_DISTRIBUTION": 610
+      },
+      "accuracy": 0.4785100286532951,
+      "balanced_accuracy": 0.41890009015654456,
+      "mcc": 0.21254652559285414,
+      "sign_accuracy": 0.5931232091690545,
+      "share_up": 0.8739255014326648,
+      "gross_bp_per_call": 3.466942171587203,
+      "net_bp_per_call": -6.777577828412797
+     }
+    }
    },
    "backtest_metrics": {
     "model|costs": {
@@ -385,8 +460,8 @@
      "evidence": "gated strategy after costs: total return -9.5%, Sharpe -12.61, max DD -9.6%; buy-and-hold 1.5%"
     },
     "test_passed": {
-     "status": "NOT_RUN",
-     "evidence": "test period untouched until model development is finished"
+     "status": "PASSED",
+     "evidence": "test 2025-06-16..2026-01-21, 1,123,575 rows: MCC 0.200 (min 0.05, momentum 0.100), balanced accuracy 0.440 (chance 0.333), accuracy 0.624; service calls 349 (0.03% coverage)"
     },
     "shadow_passed": {
      "status": "NOT_RUN",
@@ -401,7 +476,8 @@
    },
    "notes": [
     "Decisions use the raw tuned probabilities (argmax); calibrated probabilities are for display (Phase 10: calibrated argmax lowers MCC).",
-    "Accuracy target (70-80%) not reached; spec section 39 verdict NOT VERIFIED."
+    "Accuracy target (70-80%) not reached; spec section 39 verdict NOT VERIFIED.",
+    "2026-10-20T11:34:25.696982+00:00: final test run once (reports/final_test.json); test_passed PASSED"
    ],
    "history": [
     {
@@ -444,7 +520,9 @@
     "name": "test",
     "start": "2025-06-16",
     "end": "2026-01-21",
-    "used": false
+    "used": true,
+    "used_at": "2026-10-20T11:34:25.701182+00:00",
+    "report": "reports/final_test.json"
    },
    "hyperparameters": {
     "objective": "multiclass",
@@ -606,7 +684,80 @@
       "n_predictions": 0,
       "coverage": 0.0
      }
-    ]
+    ],
+    "test": {
+     "full_coverage_raw": {
+      "n": 1108578,
+      "coverage": 1.0,
+      "accuracy": 0.6115158337978924,
+      "balanced_accuracy": 0.4248181897538969,
+      "macro_f1": 0.4280018827117898,
+      "mcc": 0.18608221723423632,
+      "roc_auc_ovr": 0.6632139045902125,
+      "brier": 0.533983390457738,
+      "log_loss": 0.9150918404123289,
+      "ece_top": 0.10730229737204416,
+      "updown_auc": 0.5426668960492949,
+      "confusion_matrix": [
+       [
+        49824,
+        106157,
+        36073
+       ],
+       [
+        77272,
+        589379,
+        66999
+       ],
+       [
+        42506,
+        101658,
+        38710
+       ]
+      ],
+      "class_distribution": {
+       "DOWN": 0.17324356066961458,
+       "NEUTRAL": 0.6617937574081391,
+       "UP": 0.16496268192224633
+      },
+      "pred_distribution": {
+       "DOWN": 0.15299058794239107,
+       "NEUTRAL": 0.7191140361796824,
+       "UP": 0.1278953758779265
+      },
+      "verdict": "NOT VERIFIED"
+     },
+     "full_coverage_calibrated": {
+      "accuracy": 0.6656635798292948,
+      "balanced_accuracy": 0.3692503553221799,
+      "mcc": 0.1421794595279061,
+      "brier": 0.4711122345046002,
+      "ece_classwise": 0.016079625821572567,
+      "ece_classwise_raw": 0.1359488918595398
+     },
+     "baselines": {
+      "majority_class_from_train": "NEUTRAL",
+      "majority_accuracy": 0.6617937574081391,
+      "momentum_mcc": 0.0977103766249594,
+      "momentum_accuracy": 0.5413926670022317,
+      "momentum_balanced_accuracy": 0.3789109122743895
+     },
+     "service_calls": {
+      "calls": 1774,
+      "coverage": 0.0016002482459511194,
+      "abstained": {
+       "LOW_CONFIDENCE": 1106197,
+       "MODEL_OUT_OF_DISTRIBUTION": 607
+      },
+      "accuracy": 0.3624577226606539,
+      "balanced_accuracy": 0.36427032264595716,
+      "mcc": 0.054313672276997335,
+      "sign_accuracy": 0.5349492671927847,
+      "share_up": 0.39402480270574974,
+      "gross_bp_per_call": 2.1543503019887305,
+      "net_bp_per_call": -8.09016969801127
+     }
+    }
    },
    "backtest_metrics": {
     "model|costs": {
@@ -801,8 +952,8 @@
      "evidence": "gated strategy after costs: total return -34.4%, Sharpe -11.35, max DD -34.5%; buy-and-hold 1.5%"
     },
     "test_passed": {
-     "status": "NOT_RUN",
-     "evidence": "test period untouched until model development is finished"
+     "status": "PASSED",
+     "evidence": "test 2025-06-16..2026-01-21, 1,108,578 rows: MCC 0.186 (min 0.05, momentum 0.098), balanced accuracy 0.425 (chance 0.333), accuracy 0.612; service calls 1,774 (0.16% coverage)"
     },
     "shadow_passed": {
      "status": "NOT_RUN",
@@ -817,7 +968,8 @@
    },
    "notes": [
     "Decisions use the raw tuned probabilities (argmax); calibrated probabilities are for display (Phase 10: calibrated argmax lowers MCC).",
-    "Accuracy target (70-80%) not reached; spec section 39 verdict NOT VERIFIED."
+    "Accuracy target (70-80%) not reached; spec section 39 verdict NOT VERIFIED.",
+    "2026-10-20T11:34:25.701182+00:00: final test run once (reports/final_test.json); test_passed PASSED"
    ],
    "history": [
     {

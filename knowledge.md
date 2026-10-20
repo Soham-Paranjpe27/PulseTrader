@@ -1,16 +1,16 @@
 # knowledge.md — PulseTrader V4 project state
 
-Last updated: 2026-10-19 (phase 20 done).
+Last updated: 2026-10-20 (phase 20 done, final test run once).
 
 ## Current phase
 All 20 phases DONE on real data (Phase 20 finished 2026-10-19). Nothing is tradeable; no PRODUCTION model.
 
 ## Next exact action
 All spec phases are done. Remaining items need the user:
-1. Final test period 2025-06-16..2026-01-21: run once on both frozen CANDIDATE models (decision card in
-   the resumed thread) or keep untouched. Until then the registry gate `test_passed` is NOT_RUN and
-   docs/model-card.md + docs/final-audit.md say NOT_RUN. If run, it is run exactly once; record results
-   and never tune on them.
+1. The final test period 2025-06-16..2026-01-21 is USED (run once on 2026-10-20, user approved on the
+   decision card 2026-10-19; `pulsetrader final-test` refuses a second run). Never tune on it. Any new
+   or changed model needs a NEW untouched period: data after 2026-01-21 (needs a newer download or
+   live data). Results: reports/final_test.md.
 2. Real LIVE: Kite Connect key, secret, daily access token, plus network access to api.kite.trade and
    ws.kite.trade (both blocked here). Then a shadow evaluation (`shadow_passed` gate).
 3. Local stack if the container was recycled: `service postgresql start; redis-server --daemonize yes`;
@@ -269,6 +269,14 @@ optional SL/TP, 10 positions x 10% equity, one per symbol, Indian intraday charg
   (gitleaks, actionlint) and prisma migrate diff drift check.
 - Tests: ML 103, API 31 unit + 16 e2e, web 16 unit + 14 e2e.
 
+## Final test (DONE 2026-10-20) — reports/final_test.{md,json}, ml experiments/final_test.py
+Frozen artifacts, one run. test_passed PASSED (MCC >= 0.05, > momentum, BA > 1/3) for both; status stays
+CANDIDATE (backtest FAILED). 1m: acc 62.4% (majority 69.0%), BA 44.0%, MCC 0.200 (val 0.194, momentum
+0.100), AUC 0.682; calls 349 (0.03%), net -6.8 bp/call; gated backtest -3.1% after costs. 5m: acc 61.2%
+(majority 66.2%), BA 42.5%, MCC 0.186 (val 0.168), calls 1,774 (0.16%), net -8.1 bp; gated -13.8%.
+Buy-and-hold +3.9%. Monthly MCC 0.17-0.20: the edge held out of sample but is far too small for costs.
+Code check before the run: same code on validation reproduced registry MCC 0.1944 / 0.1685 exactly.
+
 ## Architecture
 - `ml/src/pulsetrader/`: config, data/{schema,validate,io,discovery,pipeline},
   security/{lists,master}, features/{engine,preprocess}, labels/labels, splits/splits, eval/metrics,
@@ -332,4 +340,4 @@ optional SL/TP, 10 positions x 10% equity, one per symbol, Indian intraday charg
 
 ## Commands
 See AGENTS.md. From ml/: `PULSETRADER_DATA_DIR=../data .venv/bin/pulsetrader {fetch,discover,pipeline,security,dataset,audit,classical,deep,optimize,calibrate,robustness,live,live-parity,live-eval,monitor}`.
-Tests: `.venv/bin/pytest` (103 passed on 2026-10-19). api/: `npm test`, `npm run test:e2e`. web/: `npm test`, `npm run test:e2e` (docs/frontend.md).
+Tests: `.venv/bin/pytest` (105 passed on 2026-10-20). api/: `npm test`, `npm run test:e2e`. web/: `npm test`, `npm run test:e2e` (docs/frontend.md).

@@ -194,6 +194,22 @@ class Registry:
         self._save(ms)
         return rec
 
+    def record_test(
+        self, model_id: str, version: int, test_metrics: dict[str, Any], result: dict[str, Any], report: str
+    ) -> ModelRecord:
+        """Store the one-time final test result; the test period is then marked used for good."""
+        ms = self._load()
+        rec = _find(ms, model_id, version)
+        if rec.test_period.get("used"):
+            raise RegistryError(f"{rec.key}: the test period was already used")
+        now = datetime.now(UTC).isoformat()
+        rec.test_period = {**rec.test_period, "used": True, "used_at": now, "report": report}
+        rec.metrics["test"] = test_metrics
+        rec.gates[Gate.TEST.value] = result
+        rec.notes.append(f"{now}: final test run once ({report}); test_passed {result['status']}")
+        self._save(ms)
+        return rec
+
     def transition(self, model_id: str, version: int, target: Status | str, reason: str) -> ModelRecord:
         target = Status(target)
         ms = self._load()

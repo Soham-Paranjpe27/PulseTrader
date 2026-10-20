@@ -125,3 +125,33 @@ def test_export_artifact_on_golden(golden_dataset, tmp_path):
         assert (tmp_path / "art" / f).exists()
     feats = json.loads((tmp_path / "art" / "features.json").read_text())["features"]
     assert feats == r["experiment"]["config"]["features"] if "config" in r["experiment"] else feats
+
+
+def test_final_test_is_recorded_once(tmp_path):
+    reg = Registry(tmp_path)
+    reg.register(_rec())
+    r = reg.record_test("lgb-y_5m", 1, {"mcc": 0.1}, gate(PASSED, "test"), "reports/final_test.json")
+    assert r.test_period["used"] is True and r.gates[Gate.TEST.value]["status"] == PASSED
+    assert reg.get("lgb-y_5m").metrics["test"] == {"mcc": 0.1}
+    with pytest.raises(RegistryError, match="already used"):
+        reg.record_test("lgb-y_5m", 1, {}, gate(PASSED, "again"), "x")
+
+
+def test_final_test_refuses_a_second_run(tmp_path):
+    from pulsetrader.experiments.final_test import AlreadyRun, run
+
+    reports = tmp_path / "reports"
+    reports.mkdir()
+    (reports / "final_test.json").write_text("{}")
+    with pytest.raises(AlreadyRun, match="already been run"):
+        run(tmp_path, reports, confirm=True)
+    (reports / "final_test.json").unlink()
+    reg = Registry(tmp_path / "registry")
+    used = _rec("used-model")
+    used.test_period = {"used": True}
+    reg.register(used)
+    with pytest.raises(AlreadyRun, match="already used"):
+        run(tmp_path, reports, confirm=True, models=("used-model",))
+    reg.register(_rec("fresh-model"))
+    with pytest.raises(AlreadyRun, match="confirm-single-run"):
+        run(tmp_path, reports, confirm=False, models=("fresh-model",))

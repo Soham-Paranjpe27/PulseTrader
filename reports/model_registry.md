@@ -20,10 +20,10 @@ needs every gate for its target status PASSED (docs/model-registry.md). Test per
 | calibration_passed | PASSED | isotonic calibration, validation classwise ECE 0.019 (max 0.05); raw 0.142 |
 | reproducible | PASSED | refit reproduces 1,116,225/1,116,225 stored validation predictions, max abs diff 2.98e-08 (tol 0.0001); saved model reload diff 0.0e+00 |
 | backtest_passed | FAILED | gated strategy after costs: total return -9.5%, Sharpe -12.61, max DD -9.6%; buy-and-hold 1.5% |
-| test_passed | NOT_RUN | test period untouched until model development is finished |
+| test_passed | PASSED | test 2025-06-16..2026-01-21, 1,123,575 rows: MCC 0.200 (min 0.05, momentum 0.100), balanced accuracy 0.440 (chance 0.333), accuracy 0.624; service calls 349 (0.03% coverage) |
 | shadow_passed | NOT_RUN | no live shadow run yet (Phase 17-18) |
 
-Blocked from SHADOW by: backtest_passed, test_passed
+Blocked from SHADOW by: backtest_passed
 
 History:
 
@@ -41,10 +41,10 @@ History:
 | calibration_passed | PASSED | isotonic calibration, validation classwise ECE 0.013 (max 0.05); raw 0.133 |
 | reproducible | PASSED | refit reproduces 1,101,326/1,101,326 stored validation predictions, max abs diff 2.98e-08 (tol 0.0001); saved model reload diff 0.0e+00 |
 | backtest_passed | FAILED | gated strategy after costs: total return -34.4%, Sharpe -11.35, max DD -34.5%; buy-and-hold 1.5% |
-| test_passed | NOT_RUN | test period untouched until model development is finished |
+| test_passed | PASSED | test 2025-06-16..2026-01-21, 1,108,578 rows: MCC 0.186 (min 0.05, momentum 0.098), balanced accuracy 0.425 (chance 0.333), accuracy 0.612; service calls 1,774 (0.16% coverage) |
 | shadow_passed | NOT_RUN | no live shadow run yet (Phase 17-18) |
 
-Blocked from SHADOW by: backtest_passed, test_passed
+Blocked from SHADOW by: backtest_passed
 
 History:
 

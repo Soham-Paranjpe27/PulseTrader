@@ -1,6 +1,7 @@
 # Model card: PulseTrader tuned LightGBM direction models
 
-Status: **CANDIDATE, research only. Not tradeable. No PRODUCTION model exists.**
+Status: **CANDIDATE, research only. Not tradeable. No PRODUCTION model exists.** Test gate PASSED,
+backtest gate FAILED.
 Every number below was measured on real NSE data (reports/ and data/registry/registry.json). Nothing
 here reaches the 70-80% accuracy target in the spec, and no number claims it does.
 
@@ -46,9 +47,23 @@ pre-validation folds. In the Phase 18 REPLAY of the last 20 validation sessions 
 | Net per call after 10.24 bp costs | -13.7 bp | -6.4 bp |
 These are REPLAY figures (recorded data replayed through the live pipeline), not LIVE.
 
-### Final test period
-**NOT_RUN.** The test period is still untouched; the registry gate `test_passed` is NOT_RUN, so neither
-model can move past CANDIDATE.
+### Final test period (2025-06-16..2026-01-21, run once on 2026-10-20)
+Frozen artifacts, no refit or tuning (reports/final_test.md). Gate `test_passed`: PASSED for both.
+| Metric | 1m_5bp | 5m_10bp |
+|---|---|---|
+| Rows | 1,123,575 | 1,108,578 |
+| Accuracy | 62.4% (majority class 69.0%) | 61.2% (majority 66.2%) |
+| Balanced accuracy | 44.0% | 42.5% |
+| MCC | 0.200 (momentum 0.100) | 0.186 (momentum 0.098) |
+| ROC AUC | 0.682 | 0.663 |
+| Classwise ECE raw / calibrated | 0.148 / 0.029 | 0.136 / 0.016 |
+| Service calls / coverage | 349 / 0.03% | 1,774 / 0.16% |
+| Call accuracy / MCC / sign right | 47.9% / 0.213 / 59.3% | 36.2% / 0.054 / 53.5% |
+| Net per call after costs | -6.8 bp | -8.1 bp |
+| Gated backtest after costs | -3.1% | -13.8% (buy-and-hold +3.9%) |
+The test result matches validation (MCC 0.194 / 0.168), so the edge held out of sample and every month
+stayed between MCC 0.17 and 0.20. Accuracy rose only because the test period was quieter (more NEUTRAL
+rows); it is still below the majority-class rate. Still not tradeable. The test period is now used.
 
 ## Economic result (Phase 12 backtest, validation)
 Zero costs: 1m +47.9%, 5m +21.3% (beating momentum, random and always-long baselines). With Indian

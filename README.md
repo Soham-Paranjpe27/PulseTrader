@@ -25,14 +25,6 @@ docs/feature-engineering.md, docs/labels.md, docs/leakage-prevention.md, docs/mo
 docs/model-evaluation.md, docs/walk-forward.md, docs/backtesting.md, docs/model-registry.md,
 docs/ml-service.md, docs/live-data.md. Results: docs/model-card.md, docs/final-audit.md.
 
-**Result in one line:** the best models reach validation MCC 0.19 at full coverage (accuracy ~50%,
-balanced accuracy ~45%), far from the 70-80% accuracy target, and lose money after Indian intraday
-costs. They stay CANDIDATE, research only.
-
-## Quick start
-```
-cd ml && python -m venv .venv && .venv/bin/pip install -e ".[dev,serve,fetch]"
-.venv/bin/pytest
-docker compose up -d   # from repo root: postgres, redis, ml-service, api, web (:3000)
-```
-Copy `.env.example` to `.env` for secrets. Never commit `.env`.
+**Result in one line:** the best models reach MCC 0.19-0.20 at full coverage on both validation and the
+held-out test period (balanced accuracy 43-45%), far from the 70-80% accuracy target, and lose money
+after Indian intraday costs. They stay CANDIDATE, research only.

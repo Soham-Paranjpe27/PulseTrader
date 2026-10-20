@@ -96,6 +96,33 @@ class LoadedModel:
                     X[i, j] = float(v)
         return X, errors
 
+    def score(self, X: np.ndarray, symbols: list[str]) -> dict[str, np.ndarray]:
+        """Vectorised scoring of a raw feature matrix (training order, NaN = missing).
+
+        Returns raw and calibrated probabilities, the argmax class, the missing / out-of-range
+        feature fractions and the abstain reason per row ("" = a call) for the reasons that depend
+        only on the features: FEATURES_INVALID, MODEL_OUT_OF_DISTRIBUTION, LOW_CONFIDENCE. Per-request
+        reasons (non-numeric input, STALE_DATA) are added by `predict`.
+        """
+        n = len(X)
+        missing = np.isnan(X)
+        Xs = self.preprocessor.transform_array(X)
+        z = np.abs(np.where(missing, 0.0, (X - self._mean) / self._std))
+        raw = np.asarray(self.booster.predict(Xs)) if n else np.zeros((0, 3))
+        cal = self.calibrator.transform(raw) if self.calibrator is not None and n else raw
+        miss_frac = missing.mean(axis=1) if n else np.zeros(0)
+        ood_frac = (z > self.serving["ood_abs_z"]).mean(axis=1) if n else np.zeros(0)
+        k = raw.argmax(axis=1) if n else np.zeros(0, dtype=np.int64)
+        p_dir = raw[np.arange(n), k] if n else np.zeros(0)
+        outside = np.array([bool(self.universe) and s not in self.universe for s in symbols], dtype=bool)
+        reason = np.full(n, "", dtype=object)
+        low = (k == NEUTRAL) | (p_dir < self.serving["min_confidence"])
+        reason[low] = "LOW_CONFIDENCE"
+        reason[(ood_frac > self.serving["max_ood_fraction"]) | outside] = "MODEL_OUT_OF_DISTRIBUTION"
+        reason[miss_frac > self.serving["max_missing_fraction"]] = "FEATURES_INVALID"
+        return {"raw": raw, "cal": cal, "cls": k, "p_dir": p_dir, "missing_fraction": miss_frac,
+                "ood_fraction": ood_frac, "reason": reason}  # fmt: skip
+
     def predict(
         self,
         items: list[dict[str, Any]],
@@ -105,34 +132,25 @@ class LoadedModel:
         data_quality?}. Returns one prediction record per item."""
         t0 = datetime.now(UTC)
         X, errors = self.matrix([it["features"] for it in items])
-        missing = np.isnan(X)
-        Xs = self.preprocessor.transform_array(X)
-        z = np.abs(np.where(missing, 0.0, (X - self._mean) / self._std))
-        raw = np.asarray(self.booster.predict(Xs)) if len(items) else np.zeros((0, 3))
-        cal = self.calibrator.transform(raw) if self.calibrator is not None and len(items) else raw
+        sc = self.score(X, [it["symbol"] for it in items])
+        raw, cal = sc["raw"], sc["cal"]
         latency_ms = (datetime.now(UTC) - t0).total_seconds() * 1e3
         now = now or datetime.now(UTC)
         out = []
         h = int(self.meta["horizon"])
         for i, it in enumerate(items):
-            reason = None
-            miss_frac = float(missing[i].mean())
-            ood_frac = float((z[i] > self.serving["ood_abs_z"]).mean())
             ts: datetime = it["market_data_timestamp"]
             pred_ts = ts + timedelta(minutes=BAR_MINUTES)  # bar closes one minute after its start
             stale = it.get("max_staleness_seconds")
-            if errors[i] or miss_frac > self.serving["max_missing_fraction"]:
+            reason: str | None = sc["reason"][i] or None
+            if errors[i]:
                 reason = "FEATURES_INVALID"
-            elif ood_frac > self.serving["max_ood_fraction"] or (
-                self.universe and it["symbol"] not in self.universe
-            ):
-                reason = "MODEL_OUT_OF_DISTRIBUTION"
-            elif stale is not None and (now - pred_ts).total_seconds() > float(stale):
-                reason = "STALE_DATA"
-            k = int(np.argmax(raw[i]))
+            elif reason in (None, "LOW_CONFIDENCE") and stale is not None:
+                # staleness outranks low confidence, as before; invalid / OOD features outrank both
+                if (now - pred_ts).total_seconds() > float(stale):
+                    reason = "STALE_DATA"
+            k = int(sc["cls"][i])
             p_dir = float(raw[i, k])
-            if reason is None and (k == NEUTRAL or p_dir < self.serving["min_confidence"]):
-                reason = "LOW_CONFIDENCE"
             out.append(
                 {
                     "prediction_id": str(uuid.uuid4()),
@@ -160,8 +178,8 @@ class LoadedModel:
                     "feature_version": self.feature_version,
                     "data_version": self.record.dataset_version,
                     "data_quality": it.get("data_quality", "UNKNOWN"),
-                    "missing_feature_fraction": miss_frac,
-                    "out_of_range_feature_fraction": ood_frac,
+                    "missing_feature_fraction": float(sc["missing_fraction"][i]),
+                    "out_of_range_feature_fraction": float(sc["ood_fraction"][i]),
                 }
             )
         return out

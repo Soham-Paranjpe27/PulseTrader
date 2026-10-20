@@ -333,6 +333,21 @@ def cmd_repro(args: argparse.Namespace) -> None:
         raise SystemExit(1)
 
 
+def cmd_final_test(args: argparse.Namespace) -> None:
+    """Final test-period evaluation of the frozen registry models. Runs once (refuses a second run)."""
+    from pulsetrader.experiments.final_test import AlreadyRun, run
+
+    try:
+        res = run(data_paths().root, Path(args.reports), args.confirm_single_run)
+    except AlreadyRun as e:
+        raise SystemExit(str(e)) from e
+    for r in res["models"]:
+        f = r["full_coverage_raw"]
+        print(f"{r['model']}: acc {f['accuracy']:.3f} BA {f['balanced_accuracy']:.3f} MCC {f['mcc']:.3f} "
+              f"calls {r['service_calls']['calls']} test_passed {r['gate']['status']}")  # fmt: skip
+    print("-> reports/final_test.md")
+
+
 def cmd_kite_login(args: argparse.Namespace) -> None:
     """Without --request-token: print the Zerodha login URL. With it: print a one-day access token
     for MARKET_DATA_ACCESS_TOKEN (not stored anywhere by this command)."""
@@ -449,6 +464,10 @@ def main() -> None:
     rp.add_argument("--seed", type=int, default=20)
     rp.add_argument("--reports", default="../reports")
     rp.set_defaults(func=cmd_repro)
+    ft = sub.add_parser("final-test", help="final test-period evaluation of the frozen models (runs once)")
+    ft.add_argument("--confirm-single-run", action="store_true")
+    ft.add_argument("--reports", default="../reports")
+    ft.set_defaults(func=cmd_final_test)
     kl = sub.add_parser("kite-login", help="Zerodha Kite Connect login URL / request-token exchange")
     kl.add_argument("--request-token")
     kl.set_defaults(func=cmd_kite_login)

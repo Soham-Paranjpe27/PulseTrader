@@ -3,7 +3,8 @@
 Short answer: the platform is complete and hardened, the research was done on real data without
 leakage, and the result is negative for trading. **No model reaches 70-80% directional accuracy.** The
 best models have a small, real, measurable edge (validation MCC 0.17-0.19) that is too small to survive
-Indian intraday costs. Both stay CANDIDATE. The final test period has not been used.
+Indian intraday costs. Both stay CANDIDATE. The final test period was run once (2026-10-20) and
+confirmed the validation result: MCC 0.200 / 0.186, still not tradeable.
 
 ## 1. Data
 | Check | Result | Evidence |
@@ -20,7 +21,7 @@ Indian intraday costs. Both stay CANDIDATE. The final test period has not been u
 | Chronological splits, 60-minute purge + embargo | yes | docs/leakage-prevention.md |
 | Preprocessing fit on train only | enforced by `Preprocessor.fit` | ml/src/pulsetrader/features/preprocess.py |
 | One feature engine for training, serving and live | parity 3e-8 (service), 84/84 features exact (live) | reports/phase14_inference.md, reports/phase17_live.md |
-| Test period untouched | yes; ML service and replay provider refuse it (403 TEST_PERIOD_LOCKED) | registry `test_period.used=false` |
+| Test period untouched during development | yes; ML service and replay provider refuse it (403 TEST_PERIOD_LOCKED); used once at the end with the user's approval | registry `test_period.used_at` 2026-10-20 |
 
 ## 3. Models (validation, full coverage)
 | Model | Accuracy | Balanced acc. | MCC | Coverage | Baseline |
@@ -34,6 +35,10 @@ Indian intraday costs. Both stay CANDIDATE. The final test period has not been u
   a usable high-accuracy subset.
 - Walk-forward: MCC 0.223 ± 0.018 (1m), 0.200 ± 0.010 (5m) over 4 pre-validation folds; edge shrinks over
   time (0.241 in 2023 -> 0.194 on validation).
+- Final test (2025-06-16..2026-01-21, frozen models, run once): 1m MCC 0.200, accuracy 62.4% (majority
+  69.0%), balanced 44.0%; 5m MCC 0.186, accuracy 61.2% (majority 66.2%), balanced 42.5%. Service calls
+  0.03% / 0.16% coverage, negative after costs. Gated backtest -3.1% / -13.8% vs buy-and-hold +3.9%
+  (reports/final_test.md).
 - Accuracy target 70-80%: **NOT VERIFIED** (registry `accuracy_gate`).
 
 ## 4. Trading viability
@@ -46,7 +51,7 @@ trade versus ~10 bp costs. Registry gate `backtest_passed`: FAILED. **Not tradea
 |---|---|---|
 | no_leakage, no_critical_data_quality, validation, walk_forward, calibration, reproducible | PASSED | PASSED |
 | backtest_passed | FAILED | FAILED |
-| test_passed | NOT_RUN | NOT_RUN |
+| test_passed | PASSED | PASSED |
 | shadow_passed | NOT_RUN | NOT_RUN |
 Status: CANDIDATE. No PRODUCTION model; the API answers unnamed prediction requests with NO_PRODUCTION_MODEL.
 
@@ -68,7 +73,8 @@ Status: CANDIDATE. No PRODUCTION model; the API answers unnamed prediction reque
 | Docker | compose config valid; images built and smoke-tested in CI (local builds blocked by network policy) | scripts/hardening/compose_smoke.sh |
 
 ## 8. Open items
-1. Final test period (2025-06-16..2026-01-21): run once on the frozen models, or keep untouched. User decision.
+1. The test period is used. Any new or changed model must be judged on a new untouched period
+   (data after 2026-01-21, not in the current download).
 2. Real LIVE: Kite Connect key, secret and daily access token, plus network access to Kite.
 3. Shadow evaluation on live data before any PRODUCTION promotion (gate `shadow_passed`).
 4. A model with an edge large enough to beat costs: longer horizons, lower-cost instruments, or a
