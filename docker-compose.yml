@@ -1,0 +1,83 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: pulsetrader
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: pulsetrader
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pulsetrader"]
+      interval: 10s
+      retries: 5
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      retries: 5
+  ml-service:
+    build: ./ml
+    environment:
+      PULSETRADER_DATA_DIR: /data
+      PULSETRADER_DATASET: core100_s5
+    volumes:
+      - ./data/registry:/data/registry:ro
+      - ./data/datasets:/data/datasets:ro
+      - ./data/canonical:/data/canonical:ro   # minute bars + indicators for the dashboard
+      - ./data/reference:/data/reference:ro   # daily index bars (market regime)
+    ports: ["8000:8000"]
+  api:
+    build: ./api
+    environment:
+      DATABASE_URL: postgresql://pulsetrader:${POSTGRES_PASSWORD}@postgres:5432/pulsetrader
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      REDIS_URL: redis://redis:6379
+      ML_SERVICE_URL: http://ml-service:8000
+      WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:3000}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      TRUST_PROXY: 1   # requests arrive through the web app's same-origin proxy
+      MARKET_DATA_PROVIDER: ${MARKET_DATA_PROVIDER:-}
+      LIVE_INGEST_TOKEN: ${LIVE_INGEST_TOKEN:-}   # shared with live-pipeline; empty = ingestion off
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      ml-service: { condition: service_started }
+    # Not published: the API trusts one proxy hop (TRUST_PROXY=1) for client addresses, so it must only
+    # be reachable through the web app's /api proxy (and the live pipeline on the internal network).
+    # Swagger: http://localhost:3000/api/docs.
+    expose: ["3001"]
+  # Live pipeline (Phase 17). Not started by default: `docker compose --profile live up live-pipeline`.
+  # MARKET_DATA_PROVIDER=kite needs a Kite Connect key + today's access token and network access to
+  # api.kite.trade / ws.kite.trade. Without them use replay (LIVE_REPLAY_DATE, recorded data, shown as REPLAY).
+  live-pipeline:
+    build: ./ml
+    profiles: [live]
+    command: >
+      sh -c 'pulsetrader live --out /tmp/live_predictions.jsonl
+      $${LIVE_REPLAY_DATE:+--date $$LIVE_REPLAY_DATE --speed $${LIVE_REPLAY_SPEED:-1}}'
+    environment:
+      PULSETRADER_DATA_DIR: /data
+      MARKET_DATA_PROVIDER: ${MARKET_DATA_PROVIDER:-replay}
+      MARKET_DATA_API_KEY: ${MARKET_DATA_API_KEY:-}
+      MARKET_DATA_ACCESS_TOKEN: ${MARKET_DATA_ACCESS_TOKEN:-}
+      LIVE_REPLAY_DATE: ${LIVE_REPLAY_DATE:-}
+      LIVE_REPLAY_SPEED: ${LIVE_REPLAY_SPEED:-1}
+      LIVE_API_URL: http://api:3001/api
+      LIVE_INGEST_TOKEN: ${LIVE_INGEST_TOKEN:-}   # without it predictions only go to the container log file
+    volumes:
+      - ./data/registry:/data/registry:ro
+      - ./data/datasets:/data/datasets:ro
+      - ./data/canonical:/data/canonical:ro
+      - ./data/reference:/data/reference:ro
+    depends_on:
+      api: { condition: service_healthy }
+  web:
+    build: ./web
+    environment:
+      API_URL: http://api:3001
+    depends_on:
+      api: { condition: service_healthy }
+    ports: ["3000:3000"]
+volumes:
+  pgdata:

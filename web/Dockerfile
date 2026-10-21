@@ -1,0 +1,27 @@
+# PulseTrader web (Next.js standalone server). API_URL is read at runtime by the /api proxy route.
+FROM node:22-slim AS deps
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci
+
+FROM node:22-slim AS build
+WORKDIR /app
+ENV NEXT_TELEMETRY_DISABLED=1
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+RUN npm run build
+
+FROM node:22-slim AS run
+WORKDIR /app
+ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0
+RUN groupadd -r web && useradd -r -g web web
+COPY --from=build --chown=web:web /app/.next/standalone ./
+COPY --from=build --chown=web:web /app/.next/static ./.next/static
+COPY --from=build --chown=web:web /app/public ./public
+COPY --from=build --chown=web:web /app/xff-guard.cjs ./xff-guard.cjs
+USER web
+EXPOSE 3000
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+  CMD node -e "fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+# xff-guard: the API sees the real client address, not one the browser chose (see xff-guard.cjs)
+CMD ["node", "-r", "./xff-guard.cjs", "server.js"]

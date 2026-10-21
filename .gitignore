@@ -1,0 +1,40 @@
+# secrets
+.env
+.env.*
+!.env.example
+# data and artifacts (large, derived, or raw)
+data/raw/*
+data/validated/*
+data/canonical/*
+data/features/*
+data/labels/*
+data/datasets/*
+data/reference/*
+data/canonical_daily/*
+data/experiments/
+data/experiments_*/
+!data/**/.gitkeep
+/models/
+experiments/*/predictions.parquet
+*.parquet
+!ml/tests/fixtures/*.parquet
+# python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+# node
+node_modules/
+dist/
+.next/
+coverage/
+data/*.log
+data/*.pid
+data/app/
+data/live/
+data/monitoring/
+reports/*.jsonl
+dump.rdb

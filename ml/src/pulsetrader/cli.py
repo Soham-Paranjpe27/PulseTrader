@@ -1,0 +1,479 @@
+"""Command-line entry points: `pulsetrader <command>` (see `pulsetrader --help`)."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import logging
+import shutil
+from pathlib import Path
+
+from pulsetrader.config import data_paths
+
+HF_DATASET = "xxparthparekhxx/indian-stock-market-minute-data"
+
+log = logging.getLogger("pulsetrader")
+
+
+def resources() -> dict[str, float]:
+    import os
+
+    total, _, free = shutil.disk_usage(".")
+    mem_avail = 0.0
+    with open("/proc/meminfo") as f:
+        for line in f:
+            if line.startswith("MemAvailable"):
+                mem_avail = int(line.split()[1]) / 1024**2
+    return {
+        "cpus": float(os.cpu_count() or 0),
+        "ram_available_gb": round(mem_avail, 2),
+        "disk_free_gb": round(free / 1024**3, 2),
+    }
+
+
+def cmd_fetch(args: argparse.Namespace) -> None:
+    raw = data_paths().raw
+    existing = [p for p in raw.rglob("*") if p.is_file() and p.name != ".gitkeep"]
+    if existing and not args.force:
+        log.info("data/raw already has %d files; not re-downloading (use --force)", len(existing))
+        return
+    from huggingface_hub import snapshot_download  # optional dependency, only needed here
+
+    snapshot_download(repo_id=HF_DATASET, repo_type="dataset", local_dir=raw, max_workers=4)
+
+
+def cmd_discover(args: argparse.Namespace) -> None:
+    from pulsetrader.data.discovery import discover
+
+    p = data_paths()
+    log.info("resources: %s", resources())
+    m = discover(p.raw, Path(args.reports), hash_files=not args.no_hash)
+    print(json.dumps({k: v for k, v in m.items() if k != "files"}, indent=2, default=str))
+
+
+def cmd_pipeline(args: argparse.Namespace) -> None:
+    from pulsetrader.data import pipeline
+
+    p = data_paths()
+    log.info("resources: %s", resources())
+    m = pipeline.run(p.raw, p.root, include_non_regular=args.include_non_regular)
+    Path(args.reports).mkdir(parents=True, exist_ok=True)
+    (Path(args.reports) / "data_quality_report.md").write_text(pipeline.render_quality_report(m))
+    print(json.dumps({k: v for k, v in m.items() if k != "files"}, indent=2, default=str))
+
+
+def cmd_security(args: argparse.Namespace) -> None:
+    from pulsetrader.security import master
+
+    p = data_paths()
+    log.info("resources: %s", resources())
+    s = master.build(p.canonical, p.reference, Path(args.reports))
+    print(json.dumps(s, indent=2, default=str))
+
+
+def cmd_dataset(args: argparse.Namespace) -> None:
+    from pulsetrader.datasets.build import DatasetConfig, build
+
+    p = data_paths()
+    log.info("resources: %s", resources())
+    cfg = DatasetConfig(universe_size=args.universe, sample_every=args.sample_every)
+    m = build(p.root, p.datasets / args.name, cfg)
+    print(json.dumps({k: v for k, v in m.items() if k not in ("label_distribution", "universe")}, indent=2))
+
+
+def cmd_audit(args: argparse.Namespace) -> None:
+    from pulsetrader.audit import leakage
+
+    p = data_paths()
+    report = leakage.run(p.root, p.datasets / args.name)
+    out = Path(args.reports)
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "leakage_audit_real.json").write_text(json.dumps(report, indent=2, default=str))
+    (out / "leakage_audit_real.md").write_text(leakage.render(report))
+    print(leakage.render(report))
+    if not report["passed"]:
+        raise SystemExit("leakage gate FAILED")
+
+
+def cmd_classical(args: argparse.Namespace) -> None:
+    from datetime import UTC, datetime
+
+    from pulsetrader.experiments.classical import RunConfig, run
+
+    p = data_paths()
+    log.info("resources: %s", resources())
+    cfg = RunConfig(dataset=args.name)
+    if args.horizons:
+        cfg.horizons = tuple(int(h) for h in args.horizons.split(","))
+    if args.thresholds:
+        cfg.thresholds = tuple(float(t) for t in args.thresholds.split(","))
+    out = p.root / "experiments"
+    summary = run(p.root, out, cfg)
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S")
+    (out / f"phase7_summary-{stamp}.json").write_text(json.dumps(summary, indent=1, default=str))
+    print(f"{len(summary)} experiments written to {out}")
+
+
+def cmd_deep(args: argparse.Namespace) -> None:
+    from datetime import UTC, datetime
+
+    from pulsetrader.experiments.deep import run_plan
+
+    p = data_paths()
+    log.info("resources: %s", resources())
+    out = p.root / "experiments"
+    out.mkdir(parents=True, exist_ok=True)
+    results = run_plan(p.root, out, args.name, args.stages)
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S")
+    (out / f"phase8_summary-{stamp}.json").write_text(json.dumps(results, indent=1, default=str))
+    print(f"{len(results)} experiments written to {out}")
+
+
+def cmd_optimize(args: argparse.Namespace) -> None:
+    from datetime import UTC, datetime
+
+    from pulsetrader.experiments.optimize import run_phase9
+
+    p = data_paths()
+    log.info("resources: %s", resources())
+    out = p.root / "experiments"
+    phase7_path = Path(args.phase7)
+    phase7 = json.loads(phase7_path.read_text()) if phase7_path.exists() else None
+    results = run_phase9(p.root, out, args.steps, args.name, phase7, n_trials=args.trials)
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S")
+    (out / f"phase9_{args.steps}-{stamp}.json").write_text(json.dumps(results, indent=1, default=str))
+    print(f"{len(results)} experiments written to {out}")
+
+
+def cmd_calibrate(args: argparse.Namespace) -> None:
+    from pulsetrader.experiments.calibrate import DEFAULT_INPUTS, render_summary, run
+
+    p = data_paths()
+    out = p.root / "experiments"
+    rows = run(out, tuple(args.inputs.split(",")) if args.inputs else DEFAULT_INPUTS)
+    reports = Path(args.reports)
+    reports.mkdir(parents=True, exist_ok=True)
+    (reports / "phase10_calibration.md").write_text(render_summary(rows))
+    slim = [{"experiment": r["experiment"], "result": r["result"]} for r in rows]
+    (reports / "phase10_calibration.json").write_text(json.dumps(slim, indent=1, default=str))
+    print(f"{len(rows)} calibration experiments written to {out}")
+
+
+def cmd_robustness(args: argparse.Namespace) -> None:
+    from pulsetrader.experiments.robustness import render_summary, run
+
+    p = data_paths()
+    rows = run(p.root, p.root / "experiments")
+    reports = Path(args.reports)
+    reports.mkdir(parents=True, exist_ok=True)
+    (reports / "phase11_robustness.md").write_text(render_summary(rows))
+    slim = [{"experiment": r["experiment"], "result": r["result"]} for r in rows]
+    (reports / "phase11_robustness.json").write_text(json.dumps(slim, indent=1, default=str))
+    print(f"{len(rows)} robustness experiments written")
+
+
+def cmd_backtest(args: argparse.Namespace) -> None:
+    from pulsetrader.experiments.backtest import render_summary, run
+
+    p = data_paths()
+    rows = run(p.root, p.root / "experiments")
+    reports = Path(args.reports)
+    reports.mkdir(parents=True, exist_ok=True)
+    (reports / "phase12_backtest.md").write_text(render_summary(rows))
+    slim = [{"experiment": r["experiment"], "result": r["result"]} for r in rows]
+    (reports / "phase12_backtest.json").write_text(json.dumps(slim, indent=1, default=str))
+    print(f"{len(rows)} backtest experiments written")
+
+
+def cmd_registry(args: argparse.Namespace) -> None:
+    from pulsetrader.experiments.register import DEFAULT_INPUTS, render, run
+    from pulsetrader.registry.registry import Registry
+
+    p = data_paths()
+    reg = Registry(p.root / "registry")
+    reports = Path(args.reports)
+    if args.action == "register":
+        recs = run(p.root, reports, tuple(args.inputs or DEFAULT_INPUTS))
+        for r in recs:
+            print(f"{r.key}: {r.status}")
+    elif args.action == "transition":
+        if not (args.model_id and args.version and args.to and args.reason):
+            raise SystemExit("transition needs --model-id --version --to --reason")
+        r = reg.transition(args.model_id, args.version, args.to, args.reason)
+        print(f"{r.key}: {r.status}")
+    for r in reg.models():
+        print(f"{r.key:45s} {r.status:10s} task={r.task} val_mcc={r.metrics['validation']['mcc']:.3f}")
+    reports.mkdir(parents=True, exist_ok=True)
+    (reports / "model_registry.md").write_text(render(reg.models()))
+
+
+def cmd_serve_check(args: argparse.Namespace) -> None:
+    from pulsetrader.serve.parity import check, render
+
+    p = data_paths()
+    res = check(p.root)
+    reports = Path(args.reports)
+    reports.mkdir(parents=True, exist_ok=True)
+    (reports / "phase14_inference.md").write_text(render(res))
+    (reports / "phase14_inference.json").write_text(json.dumps(res, indent=1, default=str))
+    for m in res["models"]:
+        print(m["model"], "parity", m["parity_passed"], m["historical_max_abs_diff"], m["abstain_reasons"])
+
+
+def cmd_export_app(args: argparse.Namespace) -> None:
+    from pulsetrader.appdata import export
+
+    p = data_paths()
+    print(export(p.root, p.root / "app"))
+
+
+def cmd_live(args: argparse.Namespace) -> None:
+    """Run the live pipeline: MARKET_DATA_PROVIDER=kite (real time) or replay of --date."""
+    import asyncio
+    import os
+    from datetime import date
+
+    from pulsetrader.live.features import LiveUniverse
+    from pulsetrader.live.pipeline import ApiSink, JsonlSink, LivePipeline, Sink
+    from pulsetrader.live.providers import provider_from_env
+    from pulsetrader.serve.models import ModelServer
+
+    p = data_paths()
+    srv = ModelServer(p.root / "registry")
+    models = [m for m in srv.models.values() if not args.model or m.record.model_id in args.model]
+    if not models:
+        raise SystemExit(f"no servable models selected ({srv.load_errors or 'registry empty'})")
+    sinks: list[Sink] = [JsonlSink(Path(args.out))]
+    api, token = os.environ.get("LIVE_API_URL"), os.environ.get("LIVE_INGEST_TOKEN")
+    if api and token:
+        sinks.append(ApiSink(api, token))
+    elif api:
+        log.warning("LIVE_API_URL set without LIVE_INGEST_TOKEN; not sending to the API")
+    uni = LiveUniverse.from_manifest(p.datasets / args.name)
+    from pulsetrader.monitor.runner import live_monitor
+
+    # one drift monitor across sessions, so a multi-day replay also gets the last-N-sessions report
+    drift = live_monitor(p.root, [m.record.key for m in models], args.name)
+    days = [date.fromisoformat(d) for d in args.dates] if args.dates else [
+        date.fromisoformat(args.date) if args.date else None]  # fmt: skip
+    for day in days:
+        provider = provider_from_env(p.root, day, speed=args.speed)
+        res = asyncio.run(LivePipeline(provider, uni, models, sinks, drift=drift).run())
+        print(json.dumps(res, indent=1, default=str))
+
+
+def cmd_live_parity(args: argparse.Namespace) -> None:
+    from datetime import date
+
+    from pulsetrader.live.parity import check, render
+
+    p = data_paths()
+    reports = Path(args.reports)
+    reports.mkdir(parents=True, exist_ok=True)
+    results = [check(p.root, date.fromisoformat(d), args.name) for d in args.dates]
+    (reports / "phase17_live.md").write_text("\n".join(render(r) for r in results))
+    (reports / "phase17_live.json").write_text(json.dumps(results, indent=1, default=str))
+    for r in results:
+        print(r["date"], "features", r["features_exact"], "/", r["features_compared"],
+              [(m["model"], m["max_abs_prob_diff"]) for m in r["predictions"]])  # fmt: skip
+
+
+def cmd_live_eval(args: argparse.Namespace) -> None:
+    """Phase 18: replay validation sessions with outcome tracking and evaluate them (REPLAY)."""
+    from datetime import date
+
+    from pulsetrader.live.replay_eval import render, run, validation_sessions
+
+    p = data_paths()
+    days = (
+        [date.fromisoformat(d) for d in args.dates]
+        if args.dates
+        else validation_sessions(p.root, args.name, args.last)
+    )
+    res = run(p.root, days, args.name, Path(args.out))
+    reports = Path(args.reports)
+    reports.mkdir(parents=True, exist_ok=True)
+    (reports / "phase18_live_eval.md").write_text(render(res))
+    (reports / "phase18_live_eval.json").write_text(json.dumps(res, indent=1, default=str))
+    for e in res["evaluation"]:
+        print(e["model"], e["selective"], e["full_coverage"]["mcc"] if e["full_coverage"] else None)
+
+
+def cmd_monitor(args: argparse.Namespace) -> None:
+    """Phase 19: build drift references per model and run the monitor over the validation period."""
+    from pulsetrader.monitor.runner import build_references, evaluate_validation, render
+
+    p = data_paths()
+    refs = build_references(p.root, args.name)
+    res = evaluate_validation(p.root, args.name)
+    reports = Path(args.reports)
+    reports.mkdir(parents=True, exist_ok=True)
+    (reports / "phase19_monitoring.md").write_text(render(refs, res))
+    (reports / "phase19_monitoring.json").write_text(
+        json.dumps({"references": refs, **res}, indent=1, default=str)
+    )
+    for mres in res["models"]:
+        for w in mres["windows"]:
+            if w["window"]["kind"] == "month":
+                print(mres["model"], w["window"]["label"], w["status"], w["reasons"])
+
+
+def cmd_repro(args: argparse.Namespace) -> None:
+    """Phase 20: artifact integrity, dataset rebuild from canonical bars, model refit."""
+    from pulsetrader.experiments.repro import render, run
+
+    p = data_paths()
+    res = run(p.root, args.name, args.symbols, args.seed)
+    reports = Path(args.reports)
+    reports.mkdir(parents=True, exist_ok=True)
+    (reports / "phase20_repro.md").write_text(render(res))
+    (reports / "phase20_repro.json").write_text(json.dumps(res, indent=1, default=str))
+    print("reproducible" if res["passed"] else "NOT reproducible", "-> reports/phase20_repro.md")
+    if not res["passed"]:
+        raise SystemExit(1)
+
+
+def cmd_final_test(args: argparse.Namespace) -> None:
+    """Final test-period evaluation of the frozen registry models. Runs once (refuses a second run)."""
+    from pulsetrader.experiments.final_test import AlreadyRun, run
+
+    try:
+        res = run(data_paths().root, Path(args.reports), args.confirm_single_run)
+    except AlreadyRun as e:
+        raise SystemExit(str(e)) from e
+    for r in res["models"]:
+        f = r["full_coverage_raw"]
+        print(f"{r['model']}: acc {f['accuracy']:.3f} BA {f['balanced_accuracy']:.3f} MCC {f['mcc']:.3f} "
+              f"calls {r['service_calls']['calls']} test_passed {r['gate']['status']}")  # fmt: skip
+    print("-> reports/final_test.md")
+
+
+def cmd_kite_login(args: argparse.Namespace) -> None:
+    """Without --request-token: print the Zerodha login URL. With it: print a one-day access token
+    for MARKET_DATA_ACCESS_TOKEN (not stored anywhere by this command)."""
+    import os
+
+    from pulsetrader.live.kite import exchange_request_token, login_url
+
+    key, secret = os.environ.get("MARKET_DATA_API_KEY", ""), os.environ.get("MARKET_DATA_API_SECRET", "")
+    if not key:
+        raise SystemExit("set MARKET_DATA_API_KEY (your Kite Connect app key)")
+    if not args.request_token:
+        print(login_url(key))
+        return
+    if not secret:
+        raise SystemExit("set MARKET_DATA_API_SECRET to exchange the request token")
+    print(exchange_request_token(key, secret, args.request_token))
+
+
+def main() -> None:
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+    ap = argparse.ArgumentParser(prog="pulsetrader")
+    sub = ap.add_subparsers(required=True)
+    f = sub.add_parser("fetch", help="download the Hugging Face dataset into data/raw")
+    f.add_argument("--force", action="store_true")
+    f.set_defaults(func=cmd_fetch)
+    d = sub.add_parser("discover", help="Phase 1: dataset_manifest.json + data_inventory.md")
+    d.add_argument("--reports", default="../reports")
+    d.add_argument("--no-hash", action="store_true")
+    d.set_defaults(func=cmd_discover)
+    pp = sub.add_parser("pipeline", help="Phase 2: raw -> validated -> canonical")
+    pp.add_argument("--reports", default="../reports")
+    pp.add_argument("--include-non-regular", action="store_true")
+    pp.set_defaults(func=cmd_pipeline)
+    sm = sub.add_parser("security", help="Phase 3: security master, symbol history, corporate actions")
+    sm.add_argument("--reports", default="../reports")
+    sm.set_defaults(func=cmd_security)
+    ds = sub.add_parser("dataset", help="Phases 4-5: features + labels + splits for a research universe")
+    ds.add_argument("--name", default="core100_s5")
+    ds.add_argument("--universe", type=int, default=100)
+    ds.add_argument("--sample-every", type=int, default=5)
+    ds.set_defaults(func=cmd_dataset)
+    cl = sub.add_parser("classical", help="Phase 7: baselines + classical models, train -> validation")
+    cl.add_argument("--name", default="core100_s5")
+    cl.add_argument("--horizons", default="", help="comma list, e.g. 5,15 (default: all)")
+    cl.add_argument("--thresholds", default="", help="comma list, e.g. 0.001,0.002 (default: all)")
+    cl.set_defaults(func=cmd_classical)
+    dp = sub.add_parser("deep", help="Phase 8: LSTM/GRU/attention/transformer, train -> validation")
+    dp.add_argument("--name", default="core100_s5")
+    dp.add_argument("--stages", default="ABC", help="A: architectures, B: lengths, C: other horizons")
+    dp.set_defaults(func=cmd_deep)
+    op = sub.add_parser("optimize", help="Phase 9: walk-forward, Optuna, feature selection, ensembles")
+    op.add_argument("--name", default="core100_s5")
+    op.add_argument("--steps", default="WTFE", help="W walk-forward, T Optuna, F features, E ensembles")
+    op.add_argument("--trials", type=int, default=25)
+    op.add_argument("--phase7", default="../reports/phase7_classical.json")
+    op.set_defaults(func=cmd_optimize)
+    ca = sub.add_parser("calibrate", help="Phase 10: Platt / isotonic on walk-forward predictions")
+    ca.add_argument("--inputs", default="", help="comma-separated Phase 9 walk-forward experiment names")
+    ca.add_argument("--reports", default="../reports")
+    ca.set_defaults(func=cmd_calibrate)
+    rb = sub.add_parser("robustness", help="Phase 11: regimes, sectors, symbols, volatility, costs")
+    rb.add_argument("--reports", default="../reports")
+    rb.set_defaults(func=cmd_robustness)
+    bt = sub.add_parser("backtest", help="Phase 12: portfolio backtests vs buy-and-hold, naive, momentum")
+    bt.add_argument("--reports", default="../reports")
+    bt.set_defaults(func=cmd_backtest)
+    rg = sub.add_parser("registry", help="Phase 13: model registry (register, list, transition)")
+    rg.add_argument("action", choices=["register", "list", "transition"])
+    rg.add_argument("--inputs", nargs="*", help="e.g. lightgbm-y_5m_10bp-tuned")
+    rg.add_argument("--model-id")
+    rg.add_argument("--version", type=int)
+    rg.add_argument("--to")
+    rg.add_argument("--reason")
+    rg.add_argument("--reports", default="../reports")
+    rg.set_defaults(func=cmd_registry)
+    sc = sub.add_parser("serve-check", help="Phase 14: end-to-end inference parity on validation rows")
+    sc.add_argument("--reports", default="../reports")
+    sc.set_defaults(func=cmd_serve_check)
+    ea = sub.add_parser("export-app", help="Phase 15: stocks + daily bars for the application database")
+    ea.set_defaults(func=cmd_export_app)
+    au = sub.add_parser("audit", help="Phase 6: leakage gate on real data for a built dataset")
+    au.add_argument("--name", default="core100_s5")
+    au.add_argument("--reports", default="../reports")
+    au.set_defaults(func=cmd_audit)
+    lv = sub.add_parser("live", help="Phase 17: live pipeline (MARKET_DATA_PROVIDER=kite, or replay --date)")
+    lv.add_argument("--date", help="replay session YYYY-MM-DD (replay provider only)")
+    lv.add_argument("--dates", nargs="*", help="replay several sessions in order (one drift monitor)")
+    lv.add_argument("--speed", type=float, default=0.0, help="replay speed x real time (0 = max)")
+    lv.add_argument("--model", nargs="*", help="model ids (default: every servable model)")
+    lv.add_argument("--name", default="core100_s5")
+    lv.add_argument("--out", default="../data/live/live_predictions.jsonl")
+    lv.set_defaults(func=cmd_live)
+    lp = sub.add_parser("live-parity", help="Phase 17: replay validation sessions, compare with research")
+    lp.add_argument("--dates", nargs="+", default=["2025-06-13"])
+    lp.add_argument("--name", default="core100_s5")
+    lp.add_argument("--reports", default="../reports")
+    lp.set_defaults(func=cmd_live_parity)
+    le = sub.add_parser("live-eval", help="Phase 18: replay validation sessions, score live predictions")
+    le.add_argument(
+        "--dates", nargs="*", help="sessions YYYY-MM-DD (default: the last --last validation days)"
+    )
+    le.add_argument("--last", type=int, default=20)
+    le.add_argument("--name", default="core100_s5")
+    le.add_argument("--out", default="../data/live/phase18_replay.jsonl")
+    le.add_argument("--reports", default="../reports")
+    le.set_defaults(func=cmd_live_eval)
+    mo = sub.add_parser("monitor", help="Phase 19: drift references + drift over the validation period")
+    mo.add_argument("--name", default="core100_s5")
+    mo.add_argument("--reports", default="../reports")
+    mo.set_defaults(func=cmd_monitor)
+    rp = sub.add_parser("repro", help="Phase 20: ML reproducibility (artifacts, dataset rebuild, refit)")
+    rp.add_argument("--name", default="core100_s5")
+    rp.add_argument("--symbols", type=int, default=6)
+    rp.add_argument("--seed", type=int, default=20)
+    rp.add_argument("--reports", default="../reports")
+    rp.set_defaults(func=cmd_repro)
+    ft = sub.add_parser("final-test", help="final test-period evaluation of the frozen models (runs once)")
+    ft.add_argument("--confirm-single-run", action="store_true")
+    ft.add_argument("--reports", default="../reports")
+    ft.set_defaults(func=cmd_final_test)
+    kl = sub.add_parser("kite-login", help="Zerodha Kite Connect login URL / request-token exchange")
+    kl.add_argument("--request-token")
+    kl.set_defaults(func=cmd_kite_login)
+    a = ap.parse_args()
+    a.func(a)
+
+
+if __name__ == "__main__":
+    main()

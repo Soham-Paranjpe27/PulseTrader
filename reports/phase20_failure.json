@@ -1,0 +1,137 @@
+{
+ "api": "http://localhost:3003",
+ "checks": [
+  {
+   "scenario": "ML service down",
+   "check": "liveness stays up",
+   "passed": true,
+   "evidence": "GET /api/health -> 200"
+  },
+  {
+   "scenario": "ML service down",
+   "check": "prediction request fails with 503 and a code, not 500",
+   "passed": true,
+   "evidence": "503 {'code': 'ML_SERVICE_UNAVAILABLE', 'message': 'fetch failed'}"
+  },
+  {
+   "scenario": "ML service down",
+   "check": "stock detail still served from the database",
+   "passed": true,
+   "evidence": "200"
+  },
+  {
+   "scenario": "ML service down",
+   "check": "readiness reports the ML service",
+   "passed": true,
+   "evidence": "200 {'ready': True, 'database': True, 'redis': True, 'mlService': {'reachable': False, 'error': 'fetch failed'}, 'marketData': {'state': 'DISCONNECTED', 'provider': None, 'mode': None, 'reason': 'no live market data provider configured', 'lastBarClose': None, 'latencyP50Seconds': None, 'accepted': None, 'rejected': None, 'observedAt': None}}"
+  },
+  {
+   "scenario": "ML service down",
+   "check": "ML_SERVICE_DOWN alert raised",
+   "passed": true,
+   "evidence": "after 0.0 s"
+  },
+  {
+   "scenario": "ML service down",
+   "check": "predictions work again after restart (no API restart)",
+   "passed": true,
+   "evidence": "after 2.4 s"
+  },
+  {
+   "scenario": "ML service down",
+   "check": "ML_SERVICE_DOWN alert cleared",
+   "passed": true,
+   "evidence": "after 0.0 s"
+  },
+  {
+   "scenario": "Redis down",
+   "check": "liveness stays up",
+   "passed": true,
+   "evidence": "GET /api/health -> 200"
+  },
+  {
+   "scenario": "Redis down",
+   "check": "stock search unaffected",
+   "passed": true,
+   "evidence": "200"
+  },
+  {
+   "scenario": "Redis down",
+   "check": "predictions still stored (stream falls back to this instance)",
+   "passed": true,
+   "evidence": "201"
+  },
+  {
+   "scenario": "Redis down",
+   "check": "feed status answers without Redis",
+   "passed": true,
+   "evidence": "200 {'state': 'DISCONNECTED', 'provider': None, 'mode': None, 'reason': 'no live market data provider configured', 'lastBarClose': None, 'latencyP50Seconds': None, 'accepted': None, 'rejected': None, 'observedAt': None}"
+  },
+  {
+   "scenario": "Redis down",
+   "check": "REDIS_DOWN alert raised",
+   "passed": true,
+   "evidence": "after 0.0 s"
+  },
+  {
+   "scenario": "Redis down",
+   "check": "API reconnects to Redis by itself",
+   "passed": true,
+   "evidence": "after 1.0 s"
+  },
+  {
+   "scenario": "Redis down",
+   "check": "REDIS_DOWN alert cleared",
+   "passed": true,
+   "evidence": "after 0.0 s"
+  },
+  {
+   "scenario": "PostgreSQL down",
+   "check": "liveness stays up",
+   "passed": true,
+   "evidence": "GET /api/health -> 200"
+  },
+  {
+   "scenario": "PostgreSQL down",
+   "check": "readiness fails (503, database false)",
+   "passed": true,
+   "evidence": "503 {'ready': False, 'database': False, 'redis': True, 'mlService': {'reachable': True, 'ready': True, 'reason': 'NO_PRODUCTION_MODEL', 'production_models': [], 'loaded_models': ['lightgbm-y_1m_5bp-tuned@v1', 'lightgbm-y_5m_10bp-tuned@v1'], 'historical_mode': True, 'load_errors': {}}, 'marketData': {'state': 'DISCONNECTED', 'provider': None, 'mode': None, 'reason': 'no live market data provider configured', 'lastBarClose': None, 'latencyP50Seconds': None, 'accepted': None, 'rejected': None, 'observedAt': None}}"
+  },
+  {
+   "scenario": "PostgreSQL down",
+   "check": "GET /api/stocks?q=REL -> 503 with a code, not 500",
+   "passed": true,
+   "evidence": "503 {'code': 'DATABASE_UNAVAILABLE', 'message': 'The database is not reachable. Try again shortly.'}"
+  },
+  {
+   "scenario": "PostgreSQL down",
+   "check": "GET /api/auth/me -> 503 with a code, not 500",
+   "passed": true,
+   "evidence": "503 {'code': 'DATABASE_UNAVAILABLE', 'message': 'The database is not reachable. Try again shortly.'}"
+  },
+  {
+   "scenario": "PostgreSQL down",
+   "check": "GET /api/monitoring -> 503 with a code, not 500",
+   "passed": true,
+   "evidence": "503 {'code': 'DATABASE_UNAVAILABLE', 'message': 'The database is not reachable. Try again shortly.'}"
+  },
+  {
+   "scenario": "PostgreSQL down",
+   "check": "API process survives the outage",
+   "passed": true,
+   "evidence": "200"
+  },
+  {
+   "scenario": "PostgreSQL down",
+   "check": "API recovers without a restart",
+   "passed": true,
+   "evidence": "after 0.0 s"
+  },
+  {
+   "scenario": "PostgreSQL down",
+   "check": "existing sessions still valid",
+   "passed": true,
+   "evidence": "200"
+  }
+ ]
+}

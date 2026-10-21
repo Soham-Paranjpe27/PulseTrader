@@ -1,0 +1,892 @@
+{
+ "runner_version": "final-test-v1",
+ "started_at": "2026-10-20T11:31:20.905174+00:00",
+ "finished_at": "2026-10-20T11:34:25.694938+00:00",
+ "dataset_id": "dataset-v1-features-v2-labels-v1-u100-s5",
+ "test_period": {
+  "start": "2025-06-16",
+  "end": "2026-01-21"
+ },
+ "models": [
+  {
+   "model": "lightgbm-y_1m_5bp-tuned@v1",
+   "label": "y_1m_5bp",
+   "rows": 1123575,
+   "full_coverage_raw": {
+    "n": 1123575,
+    "coverage": 1.0,
+    "accuracy": 0.6239441069799524,
+    "balanced_accuracy": 0.44049749758473783,
+    "macro_f1": 0.44160228430502785,
+    "mcc": 0.19950398474081718,
+    "roc_auc_ovr": 0.681916434122788,
+    "brier": 0.5151604792556155,
+    "log_loss": 0.8850990976062056,
+    "ece_top": 0.10701478533980352,
+    "updown_auc": 0.6008699894293461,
+    "confusion_matrix": [
+     [
+      49508,
+      92911,
+      33940
+     ],
+     [
+      89115,
+      607322,
+      79321
+     ],
+     [
+      39959,
+      87281,
+      44218
+     ]
+    ],
+    "class_distribution": {
+     "DOWN": 0.15696237456333578,
+     "NEUTRAL": 0.6904372204792737,
+     "UP": 0.15260040495739047
+    },
+    "pred_distribution": {
+     "DOWN": 0.15894088067107226,
+     "NEUTRAL": 0.7009002514295886,
+     "UP": 0.14015886789933915
+    },
+    "verdict": "NOT VERIFIED"
+   },
+   "full_coverage_calibrated": {
+    "accuracy": 0.6941112075295374,
+    "balanced_accuracy": 0.3704632885578207,
+    "mcc": 0.15030494577269551,
+    "brier": 0.44126677359757727,
+    "ece_classwise": 0.0287334315076114,
+    "ece_classwise_raw": 0.1479727417099339
+   },
+   "baselines": {
+    "majority_class_from_train": "NEUTRAL",
+    "majority_accuracy": 0.6904372204792737,
+    "momentum_mcc": 0.10015789283187067,
+    "momentum_accuracy": 0.5671236900073426,
+    "momentum_balanced_accuracy": 0.37401927806369967
+   },
+   "validation_for_comparison": {
+    "accuracy": 0.5005612667696925,
+    "balanced_accuracy": 0.452359766287535,
+    "mcc": 0.19442096306694182,
+    "roc_auc_ovr": 0.6668652722355725
+   },
+   "service_calls": {
+    "calls": 349,
+    "coverage": 0.00031061566873595445,
+    "abstained": {
+     "LOW_CONFIDENCE": 1122616,
+     "MODEL_OUT_OF_DISTRIBUTION": 610
+    },
+    "accuracy": 0.4785100286532951,
+    "balanced_accuracy": 0.41890009015654456,
+    "mcc": 0.21254652559285414,
+    "sign_accuracy": 0.5931232091690545,
+    "share_up": 0.8739255014326648,
+    "gross_bp_per_call": 3.466942171587203,
+    "net_bp_per_call": -6.777577828412797
+   },
+   "round_trip_cost_bp": 10.24452,
+   "selective_table": [
+    {
+     "threshold": 0.4,
+     "n_predictions": 222360,
+     "coverage": 0.1979040117482144,
+     "accuracy": 0.3029996402230617,
+     "sign_accuracy": 0.5229177909695989,
+     "balanced_accuracy": 0.37781361847666295,
+     "mcc": 0.06305275891071907,
+     "precision_up": 0.30509540390625733,
+     "precision_down": 0.3010715550067782,
+     "recall_up": 0.18959162010521527,
+     "recall_down": 0.19771035217936142,
+     "share_up": 0.4791644180608023
+    },
+    {
+     "threshold": 0.5,
+     "n_predictions": 23662,
+     "coverage": 0.021059564337049152,
+     "accuracy": 0.38255430648296845,
+     "sign_accuracy": 0.5472910151297439,
+     "balanced_accuracy": 0.38862612056099416,
+     "mcc": 0.09562547931026433,
+     "precision_up": 0.3841068104499647,
+     "precision_down": 0.3795620437956204,
+     "recall_up": 0.03490067538405907,
+     "recall_down": 0.017396333614955857,
+     "share_up": 0.6583974304792495
+    },
+    {
+     "threshold": 0.6,
+     "n_predictions": 354,
+     "coverage": 0.0003150657499499366,
+     "accuracy": 0.4717514124293785,
+     "sign_accuracy": 0.5847457627118644,
+     "balanced_accuracy": 0.41890009015654456,
+     "mcc": 0.2099487476993845,
+     "precision_up": 0.4645161290322581,
+     "precision_down": 0.5227272727272727,
+     "recall_up": 0.0008398558247500846,
+     "recall_down": 0.0001304157995906078,
+     "share_up": 0.8757062146892656
+    },
+    {
+     "threshold": 0.7,
+     "n_predictions": 0,
+     "coverage": 0.0
+    },
+    {
+     "threshold": 0.8,
+     "n_predictions": 0,
+     "coverage": 0.0
+    },
+    {
+     "threshold": 0.9,
+     "n_predictions": 0,
+     "coverage": 0.0
+    }
+   ],
+   "monthly": [
+    {
+     "month": "2025-06",
+     "n": 81300,
+     "accuracy": 0.5831242312423124,
+     "balanced_accuracy": 0.4406820648171843,
+     "mcc": 0.19318662934061903,
+     "calls": 46
+    },
+    {
+     "month": "2025-07",
+     "n": 172500,
+     "accuracy": 0.6300347826086956,
+     "balanced_accuracy": 0.44236426982588495,
+     "mcc": 0.20425888661886923,
+     "calls": 51
+    },
+    {
+     "month": "2025-08",
+     "n": 142500,
+     "accuracy": 0.6212350877192983,
+     "balanced_accuracy": 0.44100800417398417,
+     "mcc": 0.19747317744005588,
+     "calls": 81
+    },
+    {
+     "month": "2025-09",
+     "n": 165000,
+     "accuracy": 0.6451393939393939,
+     "balanced_accuracy": 0.43267481655814827,
+     "mcc": 0.19574983105231067,
+     "calls": 39
+    },
+    {
+     "month": "2025-10",
+     "n": 149850,
+     "accuracy": 0.6126192859526193,
+     "balanced_accuracy": 0.4370375419537525,
+     "mcc": 0.1917098133686462,
+     "calls": 29
+    },
+    {
+     "month": "2025-11",
+     "n": 142500,
+     "accuracy": 0.6514315789473685,
+     "balanced_accuracy": 0.43871072670804895,
+     "mcc": 0.2014255886611121,
+     "calls": 31
+    },
+    {
+     "month": "2025-12",
+     "n": 164925,
+     "accuracy": 0.6550613915416098,
+     "balanced_accuracy": 0.44021827636837957,
+     "mcc": 0.20178433752460775,
+     "calls": 36
+    },
+    {
+     "month": "2026-01",
+     "n": 105000,
+     "accuracy": 0.5458952380952381,
+     "balanced_accuracy": 0.4397367325110662,
+     "mcc": 0.18447838051372878,
+     "calls": 36
+    }
+   ],
+   "backtest": {
+    "model|costs": {
+     "days": 151,
+     "start_equity": 1000000.0,
+     "end_equity": 5.233536458470001,
+     "total_return": -0.9999947664635416,
+     "cagr": -0.9999999984642031,
+     "sharpe": -148.59313351642484,
+     "sortino": -15.732921305631596,
+     "calmar": -1.0000052320280435,
+     "max_drawdown": -0.9999947664635416,
+     "trades": 97762,
+     "win_rate": 0.07708516601542521,
+     "profit_factor": 0.04883993284544385,
+     "avg_trade_return_bp": -12.431146881996291,
+     "median_trade_return_bp": -12.603039696029942,
+     "total_costs": 840596.7528636369,
+     "gross_pnl": -159398.01359990286,
+     "net_pnl": -999994.7664635398,
+     "turnover_per_day": 129.4860927152318,
+     "exposure": 0.17264812362062754,
+     "skipped": {
+      "symbol_held": 0,
+      "book_full": 0,
+      "no_capital": 238299
+     },
+     "exit_reasons": {
+      "horizon": 97762
+     },
+     "signals": 336061
+    },
+    "model|zero_costs": {
+     "days": 151,
+     "start_equity": 1000000.0,
+     "end_equity": 1142597.821962549,
+     "total_return": 0.14259782196254878,
+     "cagr": 0.24915631090757162,
+     "sharpe": 4.6277432910036325,
+     "sortino": 5.19660955887858,
+     "calmar": 16.133820442792704,
+     "max_drawdown": -0.015443106720508637,
+     "trades": 100380,
+     "win_rate": 0.47721657700737197,
+     "profit_factor": 1.0382069708680919,
+     "avg_trade_return_bp": 0.1336294070307129,
+     "median_trade_return_bp": 0.0,
+     "total_costs": 0.0,
+     "gross_pnl": 142597.82196268294,
+     "net_pnl": 142597.82196268294,
+     "turnover_per_day": 132.95364238410596,
+     "exposure": 0.17727152317914324,
+     "skipped": {
+      "symbol_held": 0,
+      "book_full": 59315,
+      "no_capital": 176366
+     },
+     "exit_reasons": {
+      "horizon": 100380
+     },
+     "signals": 336061
+    },
+    "model_gated|costs": {
+     "days": 151,
+     "start_equity": 1000000.0,
+     "end_equity": 968853.3541391717,
+     "total_return": -0.03114664586082838,
+     "cagr": -0.05143649904368297,
+     "sharpe": -11.653935786289896,
+     "sortino": -7.889269696604825,
+     "calmar": -1.6514297967593405,
+     "max_drawdown": -0.03114664586082838,
+     "trades": 349,
+     "win_rate": 0.18051575931232092,
+     "profit_factor": 0.16110510194452585,
+     "avg_trade_return_bp": -9.064731949773329,
+     "median_trade_return_bp": -10.254410549764048,
+     "total_costs": 28583.163032097164,
+     "gross_pnl": -2563.482828731645,
+     "net_pnl": -31146.64586082881,
+     "turnover_per_day": 0.46225165562913906,
+     "exposure": 0.0006163355408388561,
+     "skipped": {
+      "symbol_held": 0,
+      "book_full": 0,
+      "no_capital": 0
+     },
+     "exit_reasons": {
+      "horizon": 349
+     },
+     "signals": 349
+    },
+    "model_gated|zero_costs": {
+     "days": 151,
+     "start_equity": 1000000.0,
+     "end_equity": 1004381.0154488666,
+     "total_return": 0.004381015448866599,
+     "cagr": 0.007322070778090994,
+     "sharpe": 2.1552743862746895,
+     "sortino": 1.9313005010304265,
+     "calmar": 4.176243480916018,
+     "max_drawdown": -0.0017532672152738016,
+     "trades": 349,
+     "win_rate": 0.4785100286532951,
+     "profit_factor": 1.3138901956239066,
+     "avg_trade_return_bp": 1.2536940130798113,
+     "median_trade_return_bp": 0.0,
+     "total_costs": 0.0,
+     "gross_pnl": 4381.01544886783,
+     "net_pnl": 4381.01544886783,
+     "turnover_per_day": 0.46225165562913906,
+     "exposure": 0.0006163355408388561,
+     "skipped": {
+      "symbol_held": 0,
+      "book_full": 0,
+      "no_capital": 0
+     },
+     "exit_reasons": {
+      "horizon": 349
+     },
+     "signals": 349
+    },
+    "momentum|costs": {
+     "days": 151,
+     "start_equity": 1000000.0,
+     "end_equity": 2.6277884565408565,
+     "total_return": -0.9999973722115435,
+     "cagr": -0.9999999995135944,
+     "sharpe": -169.34799620815946,
+     "sortino": -15.753251815151625,
+     "calmar": -1.0000026273089548,
+     "max_drawdown": -0.9999973722115435,
+     "trades": 101107,
+     "win_rate": 0.06738405847270713,
+     "profit_factor": 0.05208660596033716,
+     "avg_trade_return_bp": -12.70064121866684,
+     "median_trade_return_bp": -12.605560556055401,
+     "total_costs": 819735.435144562,
+     "gross_pnl": -180261.9370669846,
+     "net_pnl": -999997.3722115466,
+     "turnover_per_day": 133.91655629139075,
+     "exposure": 0.17855540838886094,
+     "skipped": {
+      "symbol_held": 0,
+      "book_full": 0,
+      "no_capital": 258603
+     },
+     "exit_reasons": {
+      "horizon": 101107
+     },
+     "signals": 359710
+    },
+    "momentum|zero_costs": {
+     "days": 151,
+     "start_equity": 1000000.0,
+     "end_equity": 860182.2520016154,
+     "total_return": -0.13981774799838464,
+     "cagr": -0.22225050565209992,
+     "sharpe": -4.830728953315924,
+     "sortino": -4.496717510983299,
+     "calmar": -1.4916728608430714,
+     "max_drawdown": -0.14899413369127545,
+     "trades": 103838,
+     "win_rate": 0.4384907259384811,
+     "profit_factor": 0.9560224135603439,
+     "avg_trade_return_bp": -0.14426897641198466,
+     "median_trade_return_bp": 0.0,
+     "total_costs": 0.0,
+     "gross_pnl": -139817.7479984525,
+     "net_pnl": -139817.7479984525,
+     "turnover_per_day": 137.5337748344371,
+     "exposure": 0.18337836644627364,
+     "skipped": {
+      "symbol_held": 0,
+      "book_full": 61215,
+      "no_capital": 194657
+     },
+     "exit_reasons": {
+      "horizon": 103838
+     },
+     "signals": 359710
+    },
+    "buy_and_hold|costs": {
+     "days": 151,
+     "start_equity": 1000000.0,
+     "end_equity": 1038690.8303344619,
+     "total_return": 0.03869083033446197,
+     "cagr": 0.06540211925665207,
+     "sharpe": 0.6501189956059708,
+     "sortino": 0.5864381288495019,
+     "calmar": 1.1434134050139362,
+     "max_drawdown": -0.05719901390858273,
+     "trades": 200,
+     "win_rate": null,
+     "profit_factor": null,
+     "avg_trade_return_bp": null,
+     "median_trade_return_bp": null,
+     "total_costs": 1085.984727072293,
+     "gross_pnl": 0.0,
+     "net_pnl": 0.0,
+     "turnover_per_day": 0.0,
+     "exposure": 1.0,
+     "skipped": {},
+     "exit_reasons": {}
+    },
+    "buy_and_hold|zero_costs": {
+     "days": 151,
+     "start_equity": 1000000.0,
+     "end_equity": 1039984.8016220107,
+     "total_return": 0.03998480162201057,
+     "cagr": 0.0676180509569082,
+     "sharpe": 0.6698531947758997,
+     "sortino": 0.6048109867517516,
+     "calmar": 1.1826352140498153,
+     "max_drawdown": -0.05717574629403854,
+     "trades": 200,
+     "win_rate": null,
+     "profit_factor": null,
+     "avg_trade_return_bp": null,
+     "median_trade_return_bp": null,
+     "total_costs": 0.0,
+     "gross_pnl": 0.0,
+     "net_pnl": 0.0,
+     "turnover_per_day": 0.0,
+     "exposure": 1.0,
+     "skipped": {},
+     "exit_reasons": {}
+    }
+   },
+   "gate": {
+    "status": "PASSED",
+    "evidence": "test 2025-06-16..2026-01-21, 1,123,575 rows: MCC 0.200 (min 0.05, momentum 0.100), balanced accuracy 0.440 (chance 0.333), accuracy 0.624; service calls 349 (0.03% coverage)"
+   }
+  },
+  {
+   "model": "lightgbm-y_5m_10bp-tuned@v1",
+   "label": "y_5m_10bp",
+   "rows": 1108578,
+   "full_coverage_raw": {
+    "n": 1108578,
+    "coverage": 1.0,
+    "accuracy": 0.6115158337978924,
+    "balanced_accuracy": 0.4248181897538969,
+    "macro_f1": 0.4280018827117898,
+    "mcc": 0.18608221723423632,
+    "roc_auc_ovr": 0.6632139045902125,
+    "brier": 0.533983390457738,
+    "log_loss": 0.9150918404123289,
+    "ece_top": 0.10730229737204416,
+    "updown_auc": 0.5426668960492949,
+    "confusion_matrix": [
+     [
+      49824,
+      106157,
+      36073
+     ],
+     [
+      77272,
+      589379,
+      66999
+     ],
+     [
+      42506,
+      101658,
+      38710
+     ]
+    ],
+    "class_distribution": {
+     "DOWN": 0.17324356066961458,
+     "NEUTRAL": 0.6617937574081391,
+     "UP": 0.16496268192224633
+    },
+    "pred_distribution": {
+     "DOWN": 0.15299058794239107,
+     "NEUTRAL": 0.7191140361796824,
+     "UP": 0.1278953758779265
+    },
+    "verdict": "NOT VERIFIED"
+   },
+   "full_coverage_calibrated": {
+    "accuracy": 0.6656635798292948,
+    "balanced_accuracy": 0.3692503553221799,
+    "mcc": 0.1421794595279061,
+    "brier": 0.4711122345046002,
+    "ece_classwise": 0.016079625821572567,
+    "ece_classwise_raw": 0.1359488918595398
+   },
+   "baselines": {
+    "majority_class_from_train": "NEUTRAL",
+    "majority_accuracy": 0.6617937574081391,
+    "momentum_mcc": 0.0977103766249594,
+    "momentum_accuracy": 0.5413926670022317,
+    "momentum_balanced_accuracy": 0.3789109122743895
+   },
+   "validation_for_comparison": {
+    "accuracy": 0.4795337620286818,
+    "balanced_accuracy": 0.43083715998275296,
+    "mcc": 0.16846118558677245,
+    "roc_auc_ovr": 0.645905120747277
+   },
+   "service_calls": {
+    "calls": 1774,
+    "coverage": 0.0016002482459511194,
+    "abstained": {
+     "LOW_CONFIDENCE": 1106197,
+     "MODEL_OUT_OF_DISTRIBUTION": 607
+    },
+    "accuracy": 0.3624577226606539,
+    "balanced_accuracy": 0.36427032264595716,
+    "mcc": 0.054313672276997335,
+    "sign_accuracy": 0.5349492671927847,
+    "share_up": 0.39402480270574974,
+    "gross_bp_per_call": 2.1543503019887305,
+    "net_bp_per_call": -8.09016969801127
+   },
+   "round_trip_cost_bp": 10.24452,
+   "selective_table": [
+    {
+     "threshold": 0.4,
+     "n_predictions": 181166,
+     "coverage": 0.16342196940585146,
+     "accuracy": 0.31431946391707055,
+     "sign_accuracy": 0.5184140512016604,
+     "balanced_accuracy": 0.35524964818714055,
+     "mcc": 0.034084938293573876,
+     "precision_up": 0.3046069246942609,
+     "precision_down": 0.3220653457291119,
+     "recall_up": 0.13388453251965834,
+     "recall_down": 0.16901496454122278,
+     "share_up": 0.4436759656889262
+    },
+    {
+     "threshold": 0.5,
+     "n_predictions": 20100,
+     "coverage": 0.01813133581940107,
+     "accuracy": 0.3754726368159204,
+     "sign_accuracy": 0.5294029850746269,
+     "balanced_accuracy": 0.36231838270013755,
+     "mcc": 0.0523590306062062,
+     "precision_up": 0.3811260542511967,
+     "precision_down": 0.37109306021543353,
+     "recall_up": 0.018285814276496386,
+     "recall_down": 0.02188446999281452,
+     "share_up": 0.43651741293532337
+    },
+    {
+     "threshold": 0.6,
+     "n_predictions": 391,
+     "coverage": 0.00035270409479531436,
+     "accuracy": 0.3734015345268542,
+     "sign_accuracy": 0.5294117647058824,
+     "balanced_accuracy": 0.37980480480480483,
+     "mcc": 0.10235826177871853,
+     "precision_up": 0.5384615384615384,
+     "precision_down": 0.3233333333333333,
+     "recall_up": 0.0002679440489079913,
+     "recall_down": 0.0005050662834411155,
+     "share_up": 0.23273657289002558
+    },
+    {
+     "threshold": 0.7,
+     "n_predictions": 0,
+     "coverage": 0.0
+    },
+    {
+     "threshold": 0.8,
+     "n_predictions": 0,
+     "coverage": 0.0
+    },
+    {
+     "threshold": 0.9,
+     "n_predictions": 0,
+     "coverage": 0.0
+    }
+   ],
+   "monthly": [
+    {
+     "month": "2025-06",
+     "n": 80200,
+     "accuracy": 0.5758977556109726,
+     "balanced_accuracy": 0.4289202994677534,
+     "mcc": 0.17988595384870154,
+     "calls": 140
+    },
+    {
+     "month": "2025-07",
+     "n": 170200,
+     "accuracy": 0.6222914218566392,
+     "balanced_accuracy": 0.42972420065726985,
+     "mcc": 0.19544712943050793,
+     "calls": 219
+    },
+    {
+     "month": "2025-08",
+     "n": 140600,
+     "accuracy": 0.609950213371266,
+     "balanced_accuracy": 0.42515698705216987,
+     "mcc": 0.18470757543444966,
+     "calls": 297
+    },
+    {
+     "month": "2025-09",
+     "n": 162800,
+     "accuracy": 0.6343796068796069,
+     "balanced_accuracy": 0.42221433970079447,
+     "mcc": 0.18954547832280974,
+     "calls": 208
+    },
+    {
+     "month": "2025-10",
+     "n": 147852,
+     "accuracy": 0.6033871709547385,
+     "balanced_accuracy": 0.4240783230732488,
+     "mcc": 0.18041081833868408,
+     "calls": 145
+    },
+    {
+     "month": "2025-11",
+     "n": 140600,
+     "accuracy": 0.63400426742532,
+     "balanced_accuracy": 0.4209145467884734,
+     "mcc": 0.1851150579748251,
+     "calls": 157
+    },
+    {
+     "month": "2025-12",
+     "n": 162726,
+     "accuracy": 0.638631810528127,
+     "balanced_accuracy": 0.4135472139270948,
+     "mcc": 0.17501257213315605,
+     "calls": 197
+    },
+    {
+     "month": "2026-01",
+     "n": 103600,
+     "accuracy": 0.5260714285714285,
+     "balanced_accuracy": 0.42270654550188264,
+     "mcc": 0.1680069713127749,
+     "calls": 411
+    }
+   ],
+   "backtest": {
+    "model|costs": {
+     "days": 151,
+     "start_equity": 1000000.0,
+     "end_equity": 13.76611860839676,
+     "total_return": -0.9999862338813916,
+     "cagr": -0.99999999228585,
+     "sharpe": -91.0000212928264,
+     "sortino": -15.588000904325275,
+     "calmar": -1.0000137585938609,
+     "max_drawdown": -0.9999862338813916,
+     "trades": 90743,
+     "win_rate": 0.23796876894085495,
+     "profit_factor": 0.23604635899221157,
+     "avg_trade_return_bp": -12.323947554334449,
+     "median_trade_return_bp": -11.69896153110054,
+     "total_costs": 874213.1161635155,
+     "gross_pnl": -125773.11771788495,
+     "net_pnl": -999986.2338814004,
+     "turnover_per_day": 120.18940397350995,
+     "exposure": 0.8012626931567329,
+     "skipped": {
+      "symbol_held": 0,
+      "book_full": 0,
+      "no_capital": 220641
+     },
+     "exit_reasons": {
+      "horizon": 90743
+     },
+     "signals": 311384
+    },
+    "model|zero_costs": {
+     "days": 151,
+     "start_equity": 1000000.0,
+     "end_equity": 1232626.9026854523,
+     "total_return": 0.23262690268545216,
+     "cagr": 0.4177073197410308,
+     "sharpe": 2.942782704428497,
+     "sortino": 2.7555211731426503,
+     "calmar": 5.918398110309539,
+     "max_drawdown": -0.07057776647593317,
+     "trades": 92898,
+     "win_rate": 0.5104630885487309,
+     "profit_factor": 1.026676944343041,
+     "avg_trade_return_bp": 0.22986170229098532,
+     "median_trade_return_bp": 0.8266854401794315,
+     "total_costs": 0.0,
+     "gross_pnl": 232626.90268561724,
+     "net_pnl": 232626.90268561724,
+     "turnover_per_day": 123.04370860927153,
+     "exposure": 0.8202913907284768,
+     "skipped": {
+      "symbol_held": 0,
+      "book_full": 56955,
+      "no_capital": 161531
+     },
+     "exit_reasons": {
+      "horizon": 92898
+     },
+     "signals": 311384
+    },
+    "model_gated|costs": {
+     "days": 151,
+     "start_equity": 1000000.0,
+     "end_equity": 862160.9045861446,
+     "total_return": -0.13783909541385542,
+     "cagr": -0.21926253527263595,
+     "sharpe": -8.862964171675799,
+     "sortino": -6.913586526849251,
+     "calmar": -1.5320849320031316,
+     "max_drawdown": -0.14311382527988192,
+     "trades": 1557,
+     "win_rate": 0.3436095054592164,
+     "profit_factor": 0.45700067739700634,
+     "avg_trade_return_bp": -9.514331915432255,
+     "median_trade_return_bp": -8.98484539346045,
+     "total_costs": 124746.49824488825,
+     "gross_pnl": -13092.597168965309,
+     "net_pnl": -137839.09541385356,
+     "turnover_per_day": 2.0622516556291393,
+     "exposure": 0.013748344370860928,
+     "skipped": {
+      "symbol_held": 0,
+      "book_full": 0,
+      "no_capital": 217
+     },
+     "exit_reasons": {
+      "horizon": 1557
+     },
+     "signals": 1774
+    },
+    "model_gated|zero_costs": {
+     "days": 151,
+     "start_equity": 1000000.0,
+     "end_equity": 1016574.3341923777,
+     "total_return": 0.016574334192377638,
+     "cagr": 0.02781352332298548,
+     "sharpe": 1.260267801262791,
+     "sortino": 1.481055157115012,
+     "calmar": 2.380271969495142,
+     "max_drawdown": -0.011685019056408397,
+     "trades": 1562,
+     "win_rate": 0.5198463508322664,
+     "profit_factor": 1.091758675096585,
+     "avg_trade_return_bp": 1.0619959829195549,
+     "median_trade_return_bp": 1.516780687781593,
+     "total_costs": 0.0,
+     "gross_pnl": 16574.33419238023,
+     "net_pnl": 16574.33419238023,
+     "turnover_per_day": 2.068874172185431,
+     "exposure": 0.013792494481236203,
+     "skipped": {
+      "symbol_held": 0,
+      "book_full": 17,
+      "no_capital": 195
+     },
+     "exit_reasons": {
+      "horizon": 1562
+     },
+     "signals": 1774
+    },
+    "momentum|costs": {
+     "days": 151,
+     "start_equity": 1000000.0,
+     "end_equity": 3.763789899405986,
+     "total_return": -0.9999962362101006,
+     "cagr": -0.9999999991140662,
+     "sharpe": -123.94006370494998,
+     "sortino": -15.69449097759501,
+     "calmar": -1.0000037629181284,
+     "max_drawdown": -0.9999962362101006,
+     "trades": 99745,
+     "win_rate": 0.1888415459421525,
+     "profit_factor": 0.18883692460646165,
+     "avg_trade_return_bp": -12.511111554053342,
+     "median_trade_return_bp": -13.142540068187254,
+     "total_costs": 803332.0010677306,
+     "gross_pnl": -196664.23514237115,
+     "net_pnl": -999996.2362101017,
+     "turnover_per_day": 132.11258278145695,
+     "exposure": 0.8807505518763797,
+     "skipped": {
+      "symbol_held": 0,
+      "book_full": 0,
+      "no_capital": 282960
+     },
+     "exit_reasons": {
+      "horizon": 99745
+     },
+     "signals": 382705
+    },
+    "momentum|zero_costs": {
+     "days": 151,
+     "start_equity": 1000000.0,
+     "end_equity": 1032739.7880190692,
+     "total_return": 0.03273978801906918,
+     "cagr": 0.05523470762252103,
+     "sharpe": 0.47424730105180174,
+     "sortino": 0.5337619121097553,
+     "calmar": 0.4788847838687195,
+     "max_drawdown": -0.11534028535277696,
+     "trades": 101931,
+     "win_rate": 0.46508912892054427,
+     "profit_factor": 1.0047033960669698,
+     "avg_trade_return_bp": 0.035452541953806926,
+     "median_trade_return_bp": -0.5927146693266545,
+     "total_costs": 0.0,
+     "gross_pnl": 32739.788019033767,
+     "net_pnl": 32739.788019033767,
+     "turnover_per_day": 135.00794701986754,
+     "exposure": 0.9000529801324504,
+     "skipped": {
+      "symbol_held": 0,
+      "book_full": 52967,
+      "no_capital": 227807
+     },
+     "exit_reasons": {
+      "horizon": 101931
+     },
+     "signals": 382705
+    },
+    "buy_and_hold|costs": {
+     "days": 151,
+     "start_equity": 1000000.0,
+     "end_equity": 1038690.8303344619,
+     "total_return": 0.03869083033446197,
+     "cagr": 0.06540211925665207,
+     "sharpe": 0.6501189956059708,
+     "sortino": 0.5864381288495019,
+     "calmar": 1.1434134050139362,
+     "max_drawdown": -0.05719901390858273,
+     "trades": 200,
+     "win_rate": null,
+     "profit_factor": null,
+     "avg_trade_return_bp": null,
+     "median_trade_return_bp": null,
+     "total_costs": 1085.984727072293,
+     "gross_pnl": 0.0,
+     "net_pnl": 0.0,
+     "turnover_per_day": 0.0,
+     "exposure": 1.0,
+     "skipped": {},
+     "exit_reasons": {}
+    },
+    "buy_and_hold|zero_costs": {
+     "days": 151,
+     "start_equity": 1000000.0,
+     "end_equity": 1039984.8016220107,
+     "total_return": 0.03998480162201057,
+     "cagr": 0.0676180509569082,
+     "sharpe": 0.6698531947758997,
+     "sortino": 0.6048109867517516,
+     "calmar": 1.1826352140498153,
+     "max_drawdown": -0.05717574629403854,
+     "trades": 200,
+     "win_rate": null,
+     "profit_factor": null,
+     "avg_trade_return_bp": null,
+     "median_trade_return_bp": null,
+     "total_costs": 0.0,
+     "gross_pnl": 0.0,
+     "net_pnl": 0.0,
+     "turnover_per_day": 0.0,
+     "exposure": 1.0,
+     "skipped": {},
+     "exit_reasons": {}
+    }
+   },
+   "gate": {
+    "status": "PASSED",
+    "evidence": "test 2025-06-16..2026-01-21, 1,108,578 rows: MCC 0.186 (min 0.05, momentum 0.098), balanced accuracy 0.425 (chance 0.333), accuracy 0.612; service calls 1,774 (0.16% coverage)"
+   }
+  }
+ ]
+}

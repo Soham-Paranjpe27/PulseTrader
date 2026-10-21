@@ -1,0 +1,344 @@
+// PulseTrader V4 application database (spec section 53). Large analytical datasets stay in Parquet;
+// this database holds what the application serves: users, stocks, daily market data, predictions,
+// model/feature/experiment metadata synced from the ML registry, watchlists, alerts, portfolios, audit.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum InstrumentType {
+  EQUITY
+  ETF
+  INDEX
+  OTHER
+}
+
+enum Direction {
+  UP
+  DOWN
+  NEUTRAL
+  NO_PREDICTION
+}
+
+enum ModelStatus {
+  EXPERIMENT
+  CANDIDATE
+  SHADOW
+  PRODUCTION
+  RETIRED
+  REJECTED
+}
+
+enum AlertCondition {
+  PRICE_ABOVE
+  PRICE_BELOW
+  PREDICTION_UP
+  PREDICTION_DOWN
+}
+
+enum AlertStatus {
+  ACTIVE
+  TRIGGERED
+  DISABLED
+}
+
+model User {
+  id           String      @id @default(uuid())
+  email        String      @unique
+  passwordHash String
+  name         String?
+  role         Role        @default(USER)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  sessions     Session[]
+  watchlists   Watchlist[]
+  alerts       Alert[]
+  portfolios   Portfolio[]
+  auditLogs    AuditLog[]
+}
+
+/// Refresh-token session. Only a SHA-256 hash of the refresh token is stored.
+model Session {
+  id               String    @id @default(uuid())
+  userId           String
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refreshTokenHash String    @unique
+  userAgent        String?
+  ip               String?
+  createdAt        DateTime  @default(now())
+  expiresAt        DateTime
+  revokedAt        DateTime?
+
+  @@index([userId])
+}
+
+model Stock {
+  symbol              String              @id
+  name                String?
+  instrumentType      InstrumentType
+  experimentEligible  Boolean             @default(false)
+  inResearchUniverse  Boolean             @default(false)
+  firstDate           DateTime?           @db.Date
+  lastDate            DateTime?           @db.Date
+  medianDailyTurnover Float?
+  sector              String?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  history             SymbolHistory[]
+  marketData          MarketData[]
+  predictions         Prediction[]
+  watchlistItems      WatchlistItem[]
+  alerts              Alert[]
+  positions           PortfolioPosition[]
+}
+
+model SymbolHistory {
+  id        Int       @id @default(autoincrement())
+  symbol    String
+  stock     Stock     @relation(fields: [symbol], references: [symbol], onDelete: Cascade)
+  oldSymbol String?
+  validFrom DateTime? @db.Date
+  validTo   DateTime? @db.Date
+  note      String?
+
+  @@index([symbol])
+}
+
+/// Daily bars (minute bars stay in Parquet and are served by the ML service).
+model MarketData {
+  symbol    String
+  stock     Stock    @relation(fields: [symbol], references: [symbol], onDelete: Cascade)
+  tradeDate DateTime @db.Date
+  open      Float
+  high      Float
+  low       Float
+  close     Float
+  volume    Float
+  source    String   @default("hf:xxparthparekhxx/indian-stock-market-minute-data")
+
+  @@id([symbol, tradeDate])
+  @@index([tradeDate])
+}
+
+model ModelVersion {
+  id                 String       @id // "{model_id}@v{version}"
+  modelId            String
+  version            Int
+  task               String
+  modelType          String
+  status             ModelStatus
+  datasetVersion     String
+  featureVersion     String
+  labelVersion       String
+  trainingPeriod     Json
+  validationPeriod   Json
+  testPeriod         Json
+  hyperparameters    Json
+  metrics            Json
+  backtestMetrics    Json
+  calibrationVersion String?
+  artifactPath       String
+  gates              Json
+  accuracyGate       String
+  history            Json
+  createdAt          DateTime
+  syncedAt           DateTime     @default(now())
+  predictions        Prediction[]
+
+  @@unique([modelId, version])
+}
+
+model FeatureVersion {
+  version   String   @id
+  features  Json // ordered names
+  count     Int
+  createdAt DateTime @default(now())
+}
+
+model Experiment {
+  id        String   @id // experiment folder name
+  phase     Int
+  kind      String
+  label     String?
+  model     String?
+  summary   Json
+  createdAt DateTime
+}
+
+model Prediction {
+  id                    String             @id // prediction_id from the ML service
+  symbol                String
+  stock                 Stock              @relation(fields: [symbol], references: [symbol])
+  predictionTimestamp   DateTime
+  marketDataTimestamp   DateTime
+  targetTimestamp       DateTime
+  latencyMs             Float
+  currentPrice          Float?
+  predictedPrice        Float?
+  predictedReturn       Float?
+  direction             Direction
+  modelClass            Direction
+  abstainReason         String?
+  rawProbability        Json
+  calibratedProbability Json
+  confidence            Float?
+  horizonMinutes        Int
+  labelThreshold        Float
+  modelVersionId        String
+  modelVersion          ModelVersion       @relation(fields: [modelVersionId], references: [id])
+  modelStatus           ModelStatus
+  researchOnly          Boolean
+  featureVersion        String
+  dataVersion           String
+  dataQuality           String
+  mode                  String // HISTORICAL | LIVE
+  requestedById         String?
+  createdAt             DateTime           @default(now())
+  outcome               PredictionOutcome?
+
+  @@index([symbol, predictionTimestamp])
+  @@index([modelVersionId, predictionTimestamp])
+  @@index([mode, marketDataTimestamp])
+}
+
+model PredictionOutcome {
+  predictionId     String     @id
+  prediction       Prediction @relation(fields: [predictionId], references: [id], onDelete: Cascade)
+  actualPrice      Float?
+  actualReturn     Float?
+  predictionError  Float?
+  directionCorrect Boolean?
+  actualClass      Direction?
+  evaluatedAt      DateTime   @default(now())
+}
+
+model Watchlist {
+  id        String          @id @default(uuid())
+  userId    String
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  createdAt DateTime        @default(now())
+  items     WatchlistItem[]
+
+  @@unique([userId, name])
+}
+
+model WatchlistItem {
+  id          String    @id @default(uuid())
+  watchlistId String
+  watchlist   Watchlist @relation(fields: [watchlistId], references: [id], onDelete: Cascade)
+  symbol      String
+  stock       Stock     @relation(fields: [symbol], references: [symbol])
+  addedAt     DateTime  @default(now())
+
+  @@unique([watchlistId, symbol])
+}
+
+model Alert {
+  id          String         @id @default(uuid())
+  userId      String
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  symbol      String
+  stock       Stock          @relation(fields: [symbol], references: [symbol])
+  condition   AlertCondition
+  threshold   Float?
+  status      AlertStatus    @default(ACTIVE)
+  triggeredAt DateTime?
+  createdAt   DateTime       @default(now())
+
+  @@index([userId])
+  @@index([symbol, status])
+}
+
+/// Paper portfolio (no broker connection).
+model Portfolio {
+  id        String              @id @default(uuid())
+  userId    String
+  user      User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  cash      Float
+  createdAt DateTime            @default(now())
+  positions PortfolioPosition[]
+
+  @@unique([userId, name])
+}
+
+model PortfolioPosition {
+  id          String    @id @default(uuid())
+  portfolioId String
+  portfolio   Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  symbol      String
+  stock       Stock     @relation(fields: [symbol], references: [symbol])
+  quantity    Float
+  avgPrice    Float
+  openedAt    DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([portfolioId, symbol])
+}
+
+model AuditLog {
+  id        BigInt   @id @default(autoincrement())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String
+  entity    String?
+  entityId  String?
+  ip        String?
+  detail    Json?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([action, createdAt])
+}
+
+enum AlertSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+/// Drift and latency report from the live pipeline after each completed session (Phase 19).
+model MonitoringReport {
+  id          String   @id @default(uuid())
+  modelKey    String // model_id@vN
+  mode        String // LIVE | REPLAY
+  status      String // OK | WARN | MODEL_DRIFT_DETECTED | INSUFFICIENT_DATA
+  windowKind  String // session | last_N_sessions
+  windowStart DateTime
+  windowEnd   DateTime
+  report      Json
+  createdAt   DateTime @default(now())
+
+  @@index([modelKey, createdAt])
+}
+
+/// System alerts raised by monitoring (model drift, feed, ML service, latency). One open alert per
+/// (kind, key); repeats update lastSeen and count; a healthy check resolves it.
+model SystemAlert {
+  id         String        @id @default(uuid())
+  kind       String // MODEL_DRIFT_DETECTED | FEED_DOWN | ML_SERVICE_DOWN | REDIS_DOWN | LATENCY_HIGH
+  key        String // what it is about, e.g. a model key or 'ml-service'
+  severity   AlertSeverity
+  message    String
+  details    Json?
+  open       Boolean       @default(true)
+  count      Int           @default(1)
+  firstSeen  DateTime      @default(now())
+  lastSeen   DateTime      @default(now())
+  resolvedAt DateTime?
+  resolvedBy String? // 'auto' or a user id
+
+  @@index([open, lastSeen])
+  @@index([kind, key, open])
+}

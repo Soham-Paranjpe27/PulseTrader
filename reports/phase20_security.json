@@ -1,0 +1,317 @@
+{
+ "target": "http://localhost:3000",
+ "checks": [
+  {
+   "area": "auth",
+   "check": "login sets an access token cookie",
+   "passed": true,
+   "evidence": "access_token cookie present"
+  },
+  {
+   "area": "auth",
+   "check": "forged JWT rejected (alg=none)",
+   "passed": true,
+   "evidence": "GET /api/auth/me -> 401"
+  },
+  {
+   "area": "auth",
+   "check": "forged JWT rejected (HS256 with a guessed key)",
+   "passed": true,
+   "evidence": "GET /api/auth/me -> 401"
+  },
+  {
+   "area": "auth",
+   "check": "forged JWT rejected (payload edited, original signature)",
+   "passed": true,
+   "evidence": "GET /api/auth/me -> 401"
+  },
+  {
+   "area": "auth",
+   "check": "forged JWT rejected (expired token re-signed with a guessed key)",
+   "passed": true,
+   "evidence": "GET /api/auth/me -> 401"
+  },
+  {
+   "area": "auth",
+   "check": "no session -> 401",
+   "passed": true,
+   "evidence": "401"
+  },
+  {
+   "area": "auth",
+   "check": "unknown user and wrong password look the same",
+   "passed": true,
+   "evidence": "401/401, same message"
+  },
+  {
+   "area": "auth",
+   "check": "no password hash in responses",
+   "passed": true,
+   "evidence": "GET /api/auth/me has no hash"
+  },
+  {
+   "area": "auth",
+   "check": "mass assignment of role rejected",
+   "passed": true,
+   "evidence": "register with role=ADMIN -> 400"
+  },
+  {
+   "area": "cookies",
+   "check": "access and refresh cookies are httpOnly",
+   "passed": true,
+   "evidence": "HttpOnly set"
+  },
+  {
+   "area": "cookies",
+   "check": "refresh cookie scoped to /api/auth",
+   "passed": true,
+   "evidence": "path=/api/auth"
+  },
+  {
+   "area": "csrf",
+   "check": "write without x-csrf-token rejected",
+   "passed": true,
+   "evidence": "403"
+  },
+  {
+   "area": "csrf",
+   "check": "write with a wrong x-csrf-token rejected",
+   "passed": true,
+   "evidence": "403"
+  },
+  {
+   "area": "access",
+   "check": "user B cannot read A's portfolio",
+   "passed": true,
+   "evidence": "GET -> 404"
+  },
+  {
+   "area": "access",
+   "check": "user B cannot trade in A's portfolio",
+   "passed": true,
+   "evidence": "POST -> 404"
+  },
+  {
+   "area": "access",
+   "check": "user B cannot delete A's portfolio",
+   "passed": true,
+   "evidence": "DELETE -> 404"
+  },
+  {
+   "area": "access",
+   "check": "user B cannot add to A's watchlist",
+   "passed": true,
+   "evidence": "POST -> 404"
+  },
+  {
+   "area": "access",
+   "check": "user B cannot delete A's watchlist",
+   "passed": true,
+   "evidence": "DELETE -> 404"
+  },
+  {
+   "area": "access",
+   "check": "user B cannot disable A's alert",
+   "passed": true,
+   "evidence": "PATCH -> 404"
+  },
+  {
+   "area": "access",
+   "check": "user B cannot delete A's alert",
+   "passed": true,
+   "evidence": "DELETE -> 404"
+  },
+  {
+   "area": "access",
+   "check": "USER role cannot GET /api/users",
+   "passed": true,
+   "evidence": "403"
+  },
+  {
+   "area": "access",
+   "check": "USER role cannot GET /api/admin/audit",
+   "passed": true,
+   "evidence": "403"
+  },
+  {
+   "area": "access",
+   "check": "USER role cannot POST /api/admin/sync/registry",
+   "passed": true,
+   "evidence": "403"
+  },
+  {
+   "area": "access",
+   "check": "USER role cannot POST /api/monitoring/check",
+   "passed": true,
+   "evidence": "403"
+  },
+  {
+   "area": "access",
+   "check": "USER role cannot GET /api/admin/audit?limit=1",
+   "passed": true,
+   "evidence": "403"
+  },
+  {
+   "area": "access",
+   "check": "anonymous GET /api/watchlists -> 401",
+   "passed": true,
+   "evidence": "401"
+  },
+  {
+   "area": "access",
+   "check": "anonymous GET /api/portfolios -> 401",
+   "passed": true,
+   "evidence": "401"
+  },
+  {
+   "area": "access",
+   "check": "anonymous GET /api/alerts -> 401",
+   "passed": true,
+   "evidence": "401"
+  },
+  {
+   "area": "access",
+   "check": "anonymous GET /api/monitoring/alerts -> 401",
+   "passed": true,
+   "evidence": "401"
+  },
+  {
+   "area": "access",
+   "check": "browser session cannot use live ingestion",
+   "passed": true,
+   "evidence": "403"
+  },
+  {
+   "area": "access",
+   "check": "ingestion with missing token rejected",
+   "passed": true,
+   "evidence": "403"
+  },
+  {
+   "area": "access",
+   "check": "ingestion with wrong token rejected",
+   "passed": true,
+   "evidence": "403"
+  },
+  {
+   "area": "injection",
+   "check": "stock search treats \"' OR 1=1--\" as text",
+   "passed": true,
+   "evidence": "200, 0 results, 0.01s"
+  },
+  {
+   "area": "injection",
+   "check": "stock search treats 'RELIANCE\\'; DROP TABLE \"User\";--' as text",
+   "passed": true,
+   "evidence": "200, 0 results, 0.01s"
+  },
+  {
+   "area": "injection",
+   "check": "stock search treats \"%' AND pg_sleep(3)--\" as text",
+   "passed": true,
+   "evidence": "200, 0 results, 0.01s"
+  },
+  {
+   "area": "injection",
+   "check": "stock search treats '{\"$gt\":\"\"}' as text",
+   "passed": true,
+   "evidence": "200, 0 results, 0.01s"
+  },
+  {
+   "area": "injection",
+   "check": "bad symbol \"RELIANCE'--\" -> 4xx",
+   "passed": true,
+   "evidence": "400"
+  },
+  {
+   "area": "injection",
+   "check": "bad symbol '..%2f..%2fetc%2fpasswd' -> 4xx",
+   "passed": true,
+   "evidence": "400"
+  },
+  {
+   "area": "injection",
+   "check": "bad symbol 'AAAAAAAAAAAAAAAAAAAAAAAA' -> 4xx",
+   "passed": true,
+   "evidence": "404"
+  },
+  {
+   "area": "injection",
+   "check": "proxy path traversal rejected",
+   "passed": true,
+   "evidence": "400"
+  },
+  {
+   "area": "injection",
+   "check": "object instead of string in login -> 400",
+   "passed": true,
+   "evidence": "400"
+  },
+  {
+   "area": "input",
+   "check": "malformed JSON -> 400",
+   "passed": true,
+   "evidence": "400"
+  },
+  {
+   "area": "input",
+   "check": "2 MB body rejected",
+   "passed": true,
+   "evidence": "413"
+  },
+  {
+   "area": "input",
+   "check": "historical prediction in the locked test period refused",
+   "passed": true,
+   "evidence": "403 {\"code\":\"TEST_PERIOD_LOCKED\",\"message\":\"TEST_PERIOD_LOCKED: the final test perio"
+  },
+  {
+   "area": "input",
+   "check": "errors carry no stack traces",
+   "passed": true,
+   "evidence": "404"
+  },
+  {
+   "area": "headers",
+   "check": "web CSP blocks framing and foreign scripts",
+   "passed": true,
+   "evidence": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; i"
+  },
+  {
+   "area": "headers",
+   "check": "web sends x-frame-options",
+   "passed": true,
+   "evidence": "DENY"
+  },
+  {
+   "area": "headers",
+   "check": "web sends x-content-type-options",
+   "passed": true,
+   "evidence": "nosniff"
+  },
+  {
+   "area": "headers",
+   "check": "web hides X-Powered-By",
+   "passed": true,
+   "evidence": "absent"
+  },
+  {
+   "area": "headers",
+   "check": "API CORS refuses foreign origins",
+   "passed": true,
+   "evidence": "no ACAO header"
+  },
+  {
+   "area": "headers",
+   "check": "API sends helmet headers",
+   "passed": true,
+   "evidence": "nosniff, no x-powered-by"
+  },
+  {
+   "area": "rate-limit",
+   "check": "login brute force throttled even with rotating X-Forwarded-For (40/min)",
+   "passed": true,
+   "evidence": "first 429 at attempt 36"
+  }
+ ]
+}

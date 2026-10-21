@@ -1,0 +1,87 @@
+{
+ "runner_version": "register-v1",
+ "label": "y_1m_5bp",
+ "horizon": 1,
+ "threshold": 0.0005,
+ "best_iteration": 149,
+ "fit_rows": 1567635,
+ "fit_period": [
+  "2022-01-03 13:30:00+05:30",
+  "2024-07-24 15:15:00+05:30"
+ ],
+ "early_stopping_rows": 174600,
+ "calibration": "isotonic",
+ "dev_info": {
+  "dataset_id": "dataset-v1-features-v2-labels-v1-u100-s5",
+  "dataset": "core100_s5",
+  "feature_version": "features-v2",
+  "label_version": "labels-v1",
+  "train_period": {
+   "name": "train",
+   "start": "2022-01-03",
+   "end": "2024-11-04"
+  },
+  "validation_period": {
+   "name": "validation",
+   "start": "2024-11-05",
+   "end": "2025-06-13"
+  },
+  "test_period": {
+   "name": "test",
+   "start": "2025-06-16",
+   "end": "2026-01-21",
+   "used": false
+  },
+  "folds": [
+   {
+    "name": "F1",
+    "start": "2023-02-17",
+    "end": "2023-07-21",
+    "is_validation": false
+   },
+   {
+    "name": "F2",
+    "start": "2023-07-24",
+    "end": "2023-12-26",
+    "is_validation": false
+   },
+   {
+    "name": "F3",
+    "start": "2023-12-27",
+    "end": "2024-06-03",
+    "is_validation": false
+   },
+   {
+    "name": "F4",
+    "start": "2024-06-04",
+    "end": "2024-11-04",
+    "is_validation": false
+   },
+   {
+    "name": "F5",
+    "start": "2024-11-05",
+    "end": "2025-06-13",
+    "is_validation": true
+   }
+  ],
+  "embargo_minutes": 60,
+  "train_every": 15
+ },
+ "params": {
+  "objective": "multiclass",
+  "num_class": 3,
+  "learning_rate": 0.030798097215384172,
+  "num_leaves": 197,
+  "min_data_in_leaf": 955,
+  "feature_fraction": 0.4740892774009289,
+  "bagging_fraction": 0.7149935014212363,
+  "bagging_freq": 1,
+  "lambda_l2": 1.5703794150659582,
+  "num_threads": 4,
+  "verbose": -1,
+  "max_rounds": 1000,
+  "early_stopping": 50,
+  "max_depth": -1,
+  "class_weight": "balanced"
+ }
+}

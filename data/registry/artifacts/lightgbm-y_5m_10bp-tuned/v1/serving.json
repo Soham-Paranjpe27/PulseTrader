@@ -1,0 +1,7 @@
+{
+ "min_confidence": 0.56,
+ "min_confidence_source": "20261019T071859-p12-backtest-lightgbm-y_5m_10bp-tuned-44283219: gate chosen on pre-validation folds (pre-validation net -2.98 bp per call after costs)",
+ "ood_abs_z": 8.0,
+ "max_ood_fraction": 0.1,
+ "max_missing_fraction": 0.1
+}
